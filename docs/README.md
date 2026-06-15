@@ -3,10 +3,26 @@
 > **Buradan başla.** Bu belge, projenin hedefini, şu anki dürüst durumunu, yol
 > haritasını ve nasıl devam edileceğini özetler. Detaylar alt belgelerde.
 
-## Amaç (tek cümle)
-Para/yatırım değil: **borsa hareketlerinin ne ölçüde öngörülebilir olduğunu bilimsel,
-sızıntısız, çoklu-test-düzeltmeli bir kurguyla ölçmek ve raporlamak** (saatlik/günlük/
-uzun vade; 9 BIST + 7 ABD hissesi, ileride coin). Aynı zamanda bir Claude Code deneyi.
+## Amaç — vizyon ve yöntem
+
+**Vizyon (iddialı).** Teknik göstergelerden **duygu, haber, piyasa psikolojisi ve
+makroya**; **ML ve LLM muhakemesine** kadar tüm sinyalleri tek bir motorda birleştiren,
+**borsa hareketlerinin öngörülebilir bir yapı taşıdığını bilimsel düzeyde ortaya koyan
+uçtan uca bir tahmin mimarisi** kurmak. Saatlik, günlük ve uzun vadede; 9 BIST + 7 ABD
+hissesinde, mimari **araç-agnostik** (coin ve yeni enstrümanlar eklenebilir). Profesyonel
+bir ekonomistin günlük/aylık/yıllık bakışını, Opus 4.8'in yorumlama gücüyle ölçeklemek.
+Nihai çıktı: **yayınlanabilir bir bilimsel makale** ve bir **Claude Code (Opus 4.8) yetenek
+deneyi.** Para/işlem hedefi YOK — odak tamamen öngörülebilirliğin kendisinde.
+
+**Yöntem (acımasızca dürüst).** Bu kadar iddialı bir tezin değeri, ancak ispatı kurşun
+geçirmezse vardır. "Profesyonel bir ekonomist gibi düşün, bir istatistikçi gibi kanıtla."
+Sızıntılı bir kurguda her şey "çalışır" görünür; biz gerçekten ölçüyoruz — çünkü amaç
+kendimizi kandırmak değil, **dünyaya ispat etmek.** Her sayı aşağıdaki üçlüden geçmeden
+"edge" sayılmaz.
+
+> Not: "TradingView yorumlayan ekonomist" bu mimarinin yalnızca **en temel parçasıdır**;
+> üstüne LLM, psikoloji, haber-etkisi ve portföy katmanları gelir. Uçları kovalıyoruz —
+> ama her adımı ölçerek.
 
 ## Temel ilke — DÜRÜSTLÜK
 Ham "backtest kârlı" **kanıt değildir.** Her sayı şu üçlüden geçmeden iddia edilmez:
