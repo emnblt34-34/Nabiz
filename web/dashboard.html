@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0a0b0f" />
+<title>Nabız · Borsa Duygu</title>
+<style>
+  :root{--bg:#0a0b0f;--surface:#14161d;--surface2:#1b1e27;--text:#e7e9ee;--muted:#878d9e;--faint:#5a6072;
+    --pos:#36d399;--neg:#ff5d73;--accent:#7c5cff;--amber:#ffb454;--line:rgba(255,255,255,.07)}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;-webkit-font-smoothing:antialiased;
+    max-width:680px;margin:0 auto;padding:20px 16px 48px}
+  .mono{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-variant-numeric:tabular-nums}
+  .top{display:flex;align-items:center;gap:9px}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--pos);position:relative}
+  .dot::after{content:"";position:absolute;inset:-4px;border-radius:50%;background:var(--pos);opacity:.35;animation:ping 2s ease-out infinite}
+  @keyframes ping{0%{transform:scale(1);opacity:.35}80%,100%{transform:scale(2.4);opacity:0}}
+  h1{font-size:19px;font-weight:700;letter-spacing:-.02em}
+  .sub{margin-left:auto;font-size:11px;color:var(--faint);letter-spacing:.14em;text-transform:uppercase}
+  .daily{margin-top:16px;background:linear-gradient(135deg,var(--surface),var(--surface2));border:1px solid var(--line);border-radius:16px;padding:16px 18px}
+  .daily .h{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;margin-bottom:9px}
+  .daily p{font-size:13px;line-height:1.6;color:var(--text)}
+  .mood{margin-top:12px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px 18px 15px}
+  .mrow{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
+  .mrow .l{font-size:12px;color:var(--muted)}
+  .mrow .v{font-size:15px;font-weight:600}
+  .gauge,.bar{position:relative;background:var(--surface2);border-radius:99px;overflow:hidden}
+  .gauge{height:8px}.bar{height:7px;margin:12px 0 2px}
+  .mid{position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--faint);opacity:.5;z-index:2}
+  .fp{position:absolute;left:50%;top:0;bottom:0;background:linear-gradient(90deg,#36d39933,var(--pos));border-radius:0 99px 99px 0;transition:width .6s}
+  .fn{position:absolute;right:50%;top:0;bottom:0;background:linear-gradient(270deg,#ff5d7333,var(--neg));border-radius:99px 0 0 99px;transition:width .6s}
+  .meta{display:flex;gap:14px;margin-top:11px;font-size:11px;color:var(--faint)}
+  .meta b{color:var(--muted);font-weight:500}
+  .controls{display:flex;gap:8px;margin-top:16px}
+  .seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:3px}
+  .seg button{background:none;border:none;color:var(--muted);font:inherit;font-size:12.5px;font-weight:500;padding:7px 13px;border-radius:8px;cursor:pointer}
+  .seg button.on{background:var(--surface2);color:var(--text)}
+  .refresh{margin-left:auto;display:flex;align-items:center;gap:7px;background:var(--surface);border:1px solid var(--line);color:var(--muted);font:inherit;font-size:12.5px;padding:7px 13px;border-radius:11px;cursor:pointer}
+  .list{margin-top:14px;display:flex;flex-direction:column;gap:9px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:15px 16px}
+  .card.spike{border-color:rgba(255,180,84,.5);box-shadow:0 0 0 1px rgba(255,180,84,.25)}
+  .chead{display:flex;align-items:center;gap:10px;cursor:pointer}
+  .sym{font-family:ui-monospace,monospace;font-weight:700;font-size:16px}
+  .mkt{font-size:9.5px;color:var(--faint);border:1px solid var(--line);padding:2px 6px;border-radius:6px;letter-spacing:.06em}
+  .vol{margin-left:auto;font-size:11px;color:var(--faint)}
+  .score{font-family:ui-monospace,monospace;font-weight:700;font-size:15px;min-width:54px;text-align:right}
+  .split{display:flex;justify-content:space-between;font-size:10.5px;color:var(--faint);margin-top:6px}
+  .split .p{color:var(--pos)}.split .n{color:var(--neg)}
+  .evid{margin-top:13px;padding-top:13px;border-top:1px solid var(--line)}
+  .chips{display:flex;gap:8px;margin-bottom:11px}
+  .chip{flex:1;background:var(--surface2);border-radius:10px;padding:9px 11px}
+  .chip .cl{font-size:10.5px;color:var(--faint);margin-bottom:5px;display:flex;justify-content:space-between}
+  .chip .cv{font-family:ui-monospace,monospace;font-weight:700;font-size:14px}
+  .evgrp{font-size:10.5px;color:var(--faint);letter-spacing:.06em;text-transform:uppercase;margin:10px 0 4px}
+  .ev{display:flex;gap:9px;padding:8px 0;font-size:12.5px;line-height:1.45;color:var(--muted);border-bottom:1px solid var(--line)}
+  .ev .d{flex:0 0 6px;width:6px;height:6px;border-radius:50%;margin-top:6px}
+  .ev .src{color:var(--faint);font-size:10.5px;margin-top:3px}
+  .ev .cred{color:var(--accent)}
+  .ev a{color:inherit;text-decoration:none}
+  .state{text-align:center;padding:44px 20px;color:var(--muted)}
+  .state h3{font-size:16px;color:var(--text);margin-bottom:7px}
+  .skel{height:92px;border-radius:16px;background:var(--surface)}
+  .disc{text-align:center;font-size:10.5px;color:var(--faint);margin-top:26px;line-height:1.5}
+  /* --- Öngörü --- */
+  .fcsum{margin-top:12px;background:linear-gradient(135deg,var(--surface),var(--surface2));border:1px solid var(--line);border-radius:16px;padding:14px 16px}
+  .fcsum .h{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;margin-bottom:9px}
+  .fcsum .row{display:flex;flex-wrap:wrap;gap:7px 16px;font-size:11.5px;color:var(--muted)}
+  .fcsum .row b{color:var(--text);font-weight:600}
+  .fcsum .note{margin-top:9px;font-size:10.5px;color:var(--faint);line-height:1.5}
+  .fcast{display:flex;align-items:center;gap:10px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);font-size:11.5px;color:var(--faint)}
+  .fdir{font-weight:700;font-size:11.5px;padding:3px 9px;border-radius:8px;white-space:nowrap}
+  .fdir.up{color:var(--pos);background:rgba(54,211,153,.12)}
+  .fdir.down{color:var(--neg);background:rgba(255,93,115,.12)}
+  .fdir.neutral{color:var(--muted);background:var(--surface2)}
+  .conf{height:5px;width:46px;background:var(--surface2);border-radius:99px;overflow:hidden;display:inline-block;vertical-align:middle}
+  .conf>i{display:block;height:100%;background:var(--accent)}
+  .fhz{margin-left:auto;color:var(--faint)}
+  .spin{animation:rot 1s linear infinite}@keyframes rot{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+  <div class="top">
+    <span class="dot"></span><h1>Nabız</h1><span class="sub">yerel sunucu</span>
+  </div>
+  <div class="daily"><div class="h">📊 Günlük Analiz</div><p id="daily">Veri toplanıyor…</p></div>
+  <div class="mood">
+    <div class="mrow"><span class="l">Piyasa nabzı</span><span class="v" id="verdict">—</span></div>
+    <div class="gauge"><span class="mid"></span><span class="fp" id="mfp"></span><span class="fn" id="mfn"></span></div>
+    <div class="meta"><span><b id="mT">0</b> hisse</span><span><b id="mI">0</b> içerik</span><span id="mU">başlatılıyor…</span></div>
+  </div>
+  <div id="fcsum"></div>
+  <div class="controls">
+    <div class="seg" id="seg"><button data-m="all" class="on">Tümü</button><button data-m="BIST">BIST</button><button data-m="US">ABD</button></div>
+    <button class="refresh" id="rb"><span id="ri">↻</span> Yenile</button>
+  </div>
+  <div class="list" id="list"></div>
+  <p class="disc"><b>Duygu sinyalidir</b>, yatırım tavsiyesi değildir.<br>Kaynak: Reddit, StockTwits, RSS haber, KAP · bot filtresi aktif</p>
+
+<script>
+let FILTER="all", SCORES=[], FC={items:{},meta:null};
+const $=id=>document.getElementById(id);
+const col=v=>v==null?"var(--faint)":Math.abs(v)<0.12?"var(--muted)":v>0?"var(--pos)":"var(--neg)";
+const fmt=v=>v==null?"–":(v>=0?"+":"")+(+v).toFixed(2);
+const pctf=v=>v==null?"–":Math.round(v*100)+"%";
+
+async function load(){
+  $("ri").className="spin";
+  try{
+    const [scores,st,dy,fc]=await Promise.all([
+      fetch("/api/scores?window=24h").then(r=>r.json()),
+      fetch("/api/status").then(r=>r.json()),
+      fetch("/api/daily").then(r=>r.json()),
+      fetch("/api/forecast").then(r=>r.json()).catch(()=>null),
+    ]);
+    SCORES=scores; $("daily").textContent=dy.text||"—";
+    FC={meta:fc,items:{}}; if(fc&&fc.items) fc.items.forEach(i=>FC.items[i.ticker]=i);
+    const t=st.last?new Date(st.last*1000).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"}):null;
+    $("mU").textContent = st.running?"toplanıyor…":(t?("son: "+t):"ilk toplama sürüyor…");
+    renderFcsum(); render();
+  }catch(e){
+    $("list").innerHTML='<div class="state"><h3>Sunucuya ulaşılamadı</h3><p>server.py çalışıyor mu? Terminali kontrol et.</p></div>';
+  }finally{$("ri").className="";}
+}
+
+function renderFcsum(){
+  const m=FC.meta;
+  if(!m){$("fcsum").innerHTML="";return;}
+  const hz=m.horizonHours||3;
+  if(!m.ready){
+    $("fcsum").innerHTML=`<div class="fcsum"><div class="h">🔮 Öngörü · gün içi (~${hz}s)</div>
+      <div class="row">Model hazırlanıyor… (fiyat geçmişi indiriliyor, ilk turda ~1 dk).</div></div>`;
+    return;
+  }
+  const bt=m.backtest||{}, lv=m.live||{};
+  const liveTxt = lv.resolved ? `<b>${pctf(lv.hit_rate)}</b> (${lv.resolved} sonuçlandı)` : `<b>—</b> (${lv.open||0} bekliyor)`;
+  $("fcsum").innerHTML=`<div class="fcsum">
+    <div class="h">🔮 Öngörü · gün içi (~${hz} saat)</div>
+    <div class="row">
+      <span>model: <b>${m.model||"—"}</b></span>
+      <span>geçmiş isabet: <b>${pctf(bt.hitRate)}</b> <span style="color:var(--faint)">(n=${bt.n||0})</span></span>
+      <span>canlı sicil: ${liveTxt}</span>
+    </div>
+    <div class="note">${m.disclaimer||""}</div></div>`;
+}
+
+function render(){
+  const f=SCORES.filter(s=>FILTER==="all"||s.market===FILTER);
+  const tv=f.reduce((a,s)=>a+s.volume,0);
+  const ov=tv?f.reduce((a,s)=>a+s.sentiment*s.volume,0)/tv:0;
+  const pct=Math.min(Math.abs(ov)*50,50), pos=ov>=0;
+  $("mfp").style.width=pos?pct+"%":"0"; $("mfn").style.width=pos?"0":pct+"%";
+  const lab=ov>0.4?"Güçlü pozitif":ov>0.12?"Hafif pozitif":ov<-0.4?"Güçlü negatif":ov<-0.12?"Hafif negatif":"Nötr";
+  $("verdict").textContent=SCORES.length?lab:"—"; $("verdict").style.color=col(ov);
+  $("mT").textContent=f.length; $("mI").textContent=tv;
+  if(!f.length){$("list").innerHTML='<div class="state"><h3>Henüz veri yok</h3><p>İlk toplama birkaç dakika sürebilir. Otomatik yenilenir.</p></div>';return;}
+  $("list").innerHTML=f.map(card).join("");
+}
+
+function card(s){
+  const pos=s.sentiment>=0, pct=Math.min(Math.abs(s.sentiment)*50,50).toFixed(1);
+  const spike=Math.abs(s.momentum)>=0.3&&s.volume>=2;
+  const mom=s.momentum>0.01?"▲":s.momentum<-0.01?"▼":"–";
+  return `<div class="card ${spike?'spike':''}" data-sym="${s.ticker}">
+    <div class="chead" onclick="toggle('${s.ticker}')">
+      <span class="sym">${s.ticker}</span><span class="mkt">${s.market}</span>
+      ${spike?'<span style="font-size:10px;color:var(--amber);font-weight:600">⚡ ani</span>':''}
+      <span class="vol"><span class="mono" style="color:var(--muted)">${s.volume}</span> içerik</span>
+      <span class="score" style="color:${col(s.sentiment)}">${s.volume?fmt(s.sentiment):'–'}</span>
+    </div>
+    <div class="bar"><span class="mid"></span><span class="fp" style="width:${pos?pct:0}%"></span><span class="fn" style="width:${pos?0:pct}%"></span></div>
+    <div class="split"><span class="p">${Math.round(s.posShare*100)}% pozitif</span>
+      <span class="mono" style="color:${col(s.momentum)}">${mom} ${fmt(s.momentum)} momentum</span>
+      <span class="n">${Math.round(s.negShare*100)}% negatif</span></div>
+    ${fbadge(s.ticker)}
+    <div id="ev-${s.ticker}"></div></div>`;
+}
+
+function fbadge(sym){
+  const f=FC.items[sym]; if(!f) return "";
+  const lab=f.direction==="up"?"▲ Yükseliş":f.direction==="down"?"▼ Düşüş":"– Yatay";
+  const cf=Math.round((f.confidence||0.5)*100);
+  const ex=f.expectedMovePct; const exTxt=ex==null?"":`bekl. ${ex>=0?"+":""}${(+ex).toFixed(2)}%`;
+  return `<div class="fcast">
+    <span class="fdir ${f.direction}">${lab}</span>
+    <span>güven %${cf}</span><span class="conf"><i style="width:${cf}%"></i></span>
+    <span class="mono" style="color:var(--muted)">${exTxt}</span>
+    <span class="fhz">öngörü</span></div>`;
+}
+
+async function toggle(sym){
+  const box=$("ev-"+sym);
+  if(box.innerHTML){box.innerHTML="";return;}
+  box.innerHTML='<div class="evid" style="color:var(--faint);font-size:12px">Yorumlar ve haberler yükleniyor…</div>';
+  try{
+    const d=await fetch("/api/ticker/"+sym).then(r=>r.json());
+    const nMean=mean(d.news), sMean=mean(d.social);
+    box.innerHTML=`<div class="evid">
+      <div class="chips">
+        <div class="chip"><div class="cl"><span>📰 Haber</span><span class="mono">${d.news.length}</span></div><div class="cv" style="color:${col(nMean)}">${fmt(nMean)}</div></div>
+        <div class="chip"><div class="cl"><span>💬 Yorum (retail)</span><span class="mono">${d.social.length}</span></div><div class="cv" style="color:${col(sMean)}">${fmt(sMean)}</div></div>
+      </div>
+      ${grp("Haberler",d.news)}
+      ${grp("Yatırımcı yorumları",d.social)}
+    </div>`;
+  }catch(e){ box.innerHTML='<div class="evid" style="color:var(--faint)">Yüklenemedi.</div>'; }
+}
+function mean(arr){if(!arr||!arr.length)return null;return arr.reduce((a,i)=>a+(i.score||0),0)/arr.length;}
+function grp(title,arr){
+  if(!arr||!arr.length)return `<div class="evgrp">${title}</div><div style="font-size:12px;color:var(--faint);padding:6px 0">Veri yok.</div>`;
+  return `<div class="evgrp">${title}</div>`+arr.slice(0,8).map(i=>{
+    const c=i.sentiment==="positive"?"var(--pos)":i.sentiment==="negative"?"var(--neg)":"var(--faint)";
+    const txt=(i.text||"").length>180?i.text.slice(0,180)+"…":(i.text||"");
+    const cred=i.credibility!=null?` · güven ${i.credibility}`:"";
+    const a=i.url?`<a href="${i.url}" target="_blank" rel="noopener">${esc(txt)}</a>`:esc(txt);
+    return `<div class="ev"><span class="d" style="background:${c}"></span><span>${a}
+      <span class="src">${i.source} · @${esc(i.author||"?")}<span class="cred">${cred}</span></span></span></div>`;
+  }).join("");
+}
+function esc(s){return (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+$("seg").onclick=e=>{const b=e.target.closest("button");if(!b)return;
+  document.querySelectorAll("#seg button").forEach(x=>x.classList.remove("on"));b.classList.add("on");FILTER=b.dataset.m;render();};
+$("rb").onclick=load;
+load(); setInterval(load, 60*1000);  // arayüz her dakika sunucudan tazeler
+</script>
+</body>
+</html>

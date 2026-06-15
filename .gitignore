@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+env/
+.mypy_cache/
+
+# Veri — SQLite (yeniden üretilebilir; commit edilmez)
+data/*.db
+data/*.db-wal
+data/*.db-shm
+
+# Modeller / büyük indirilenler (FinBERT vb.)
+*.pt
+*.bin
+
+# OS / editör
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+
+# Geçici dosyalar
+tmp_*
+*.tmp
+*.log
