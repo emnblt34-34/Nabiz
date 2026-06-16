@@ -44,6 +44,10 @@ Ham "backtest kârlı" **kanıt değildir.** Her sayı şu üçlüden geçmeden 
   Hurst/Efficiency-Ratio) ile aynı 5y veride L/S: **Sharpe 0.78→1.14, p 0.032→0.0055, DSR 0.51→0.79**
   (rejim-kör benchmark değişmedi → fark gerçek model katkısı). **Hâlâ <0.95 ama ispat eşiğine en çok
   yaklaştığımız nokta.** (Per-ticker yönsel IC kötüleşti → sinyal kesitsel, yönsel değil.)
+- **Stage 4 tamam — SINIRDA.** Çok-ufuk ensemble **reddedildi** (seyreltti: Sharpe 1.14→0.74). Önceden-kayıtlı
+  protokol ([on-kayit-protokol.md](on-kayit-protokol.md)) + şeffaf DSR grid: tek-ufuk edge **bootstrap p=0.0055 ✓**,
+  ama **DSR(n_trials=7)=0.912 ✗** (n=3'te 0.970). **Karar: güçlü ama robust ispat kıl payı eksik — "ispatlandı"
+  DEMİYORUZ** (n_trials cherry-pick = p-hacking, yapmıyoruz).
 - Çalışan ürün: gerçek-zamanlı duygu + saatlik fiyat + öngörü paneli — `server.py`.
 
 ## Dokümanlar
@@ -51,7 +55,8 @@ Ham "backtest kârlı" **kanıt değildir.** Her sayı şu üçlüden geçmeden 
 |---|---|
 | [strateji-arastirma.md](strateji-arastirma.md) | **Ana strateji.** 10 sinyal ailesi sentezi: taksonomi (strong/mixed/weak), tek-tahmin-motoru mimarisi, ufuk oyun kitapları, bilimsel metodoloji, modül planı, makale taslağı, 8-aşamalı yol haritası, riskler + uzman yorumu. |
 | [arastirma-bulgulari.md](arastirma-bulgulari.md) | 10 alanın derin araştırma + adversarial doğrulama detayı (referans, ~160 KB). |
-| [sonuclar.md](sonuclar.md) | **Bilimsel günlük.** Her aşamanın dürüst OOS ölçümü. Şu an: Stage 0. |
+| [sonuclar.md](sonuclar.md) | **Bilimsel günlük.** Her aşamanın dürüst OOS ölçümü (Stage 0→4). |
+| [on-kayit-protokol.md](on-kayit-protokol.md) | **Önceden-kayıt (pre-registration).** Hipotezler, sabit özellik seti, n_trials muhasebesi, kabul/red kriteri (DSR(7)>0.95 ∧ p<0.05). |
 | [fikirler-dipnotlar.md](fikirler-dipnotlar.md) | Dip notlar: LLM'in rolü (beklenti/nedensel-iletim motoru), portföy korelasyon bulguları. |
 
 ## Yol haritası (nerede kaldık)
@@ -60,9 +65,10 @@ Tam liste: [strateji-arastirma.md › Yol Haritası](strateji-arastirma.md). Öz
 - **Stage 0 — Temel dürüstlük** ✅ `evaluation/validation.py` (WF-CV) + `benchmarks.py`. Sızıntı kapandı, baseline kuruldu.
 - **Stage 2 — Doğru sinyaller (momentum)** ✅ `features.py` çok-ölçekli momentum. Günlük OOS **IC=0.069, p=0.001** — baseline aşıldı. (Kalan: mid-price reversal, gün-içi/overnight, triple-barrier — sonraki tur.)
 - **Stage 1 + Kesitsel L/S** ✅ `evaluation/stats.py` + `portfolio/weights.py` + `portfolio/ls_backtest.py`. Market-nötr hasat: Sharpe 0.78, p=0.032, DSR=0.51.
-- **Stage 3 — Rejim koşullama** ✅ `signals/regime.py` (Hurst/Efficiency-Ratio) + trend-geçitli momentum. **L/S DSR 0.51→0.79, Sharpe 1.14, p=0.0055** — edge belirgin güçlendi, ispat eşiğine yaklaştı (hâlâ <0.95).
-- **Stage 4 — Ufuk-birleştirme** ⏭️ **SIRADAKİ.** Günlük+haftalık skill-ağırlıklı; önceden-kayıtlı hipotezle n_trials düşür → DSR>0.95 hedefi.
-- **Sonraki:** meta-model/kalibrasyon, çapraz-kesit genişletme, LLM özellik katmanı, coin. (Tam liste + [strateji-arastirma.md](strateji-arastirma.md).)
+- **Stage 3 — Rejim koşullama** ✅ `signals/regime.py` + trend-geçitli momentum. L/S DSR 0.51→0.79, Sharpe 1.14, p=0.0055.
+- **Stage 4 — Ufuk-ensemble + önceden-kayıt** ✅ Ensemble reddedildi (seyreltti). Şeffaf DSR: **p=0.0055 ✓, DSR(n=7)=0.912 ✗ → SINIRDA.** Protokol: [on-kayit-protokol.md](on-kayit-protokol.md).
+- **Stage 5 — Veri/araç genişletme** ⏭️ **SIRADAKİ.** Daha uzun geçmiş + coin/yeni araç (n↑ → SR*↓) → DSR(n=7)>0.95'i muhafazakâr geçmek (kriter değiştirmeden).
+- **Sonraki:** duygu/LLM özellik ablation, meta-model/kalibrasyon, makale. (Tam liste + [strateji-arastirma.md](strateji-arastirma.md).)
 - **Stage 3** — Rejim koşullama (`regime.py`: Hurst/ADX/vol).
 - **Stage 4** — Meta-model + kalibre confidence (Platt/isotonic, Brier).
 - **Stage 5** — Çok-ufuk (günlük/haftalık bar) + çapraz-kesit rank-momentum (`cross_section.py`).
