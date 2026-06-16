@@ -40,9 +40,12 @@ def _to_utc_iso(ts) -> str:
 
 
 def fetch_bars(ticker: str, period: str = PRICE_PERIOD_LIVE,
-               interval: str = PRICE_INTERVAL) -> list[tuple]:
+               interval: str = PRICE_INTERVAL, prepost: bool = False) -> list[tuple]:
     """
     Tek sembol için OHLCV barları çeker.
+    prepost=True: ön-piyasa + sonrası (after-hours) barları da DAHİL (gün-içi intervaller).
+      Not: gece (overnight, ~20:00–04:00 ET) bireysel hisselerde yfinance'te YOK — yalnız
+      vadeli/kripto işler; pre/post 04:00–20:00 ET kapsar (dürüst sınır).
     Dönüş: [(ts_iso, open, high, low, close, volume), ...] (kronolojik).
     Hata/boş veride [] döner — çağıran taraf bunu tolere eder.
     """
@@ -52,7 +55,8 @@ def fetch_bars(ticker: str, period: str = PRICE_PERIOD_LIVE,
     sym = yf_symbol(ticker)
     for attempt in range(2):  # tz-cache kilidi geçiciyse bir kez daha dene
         try:
-            df = yf.Ticker(sym).history(period=period, interval=interval, auto_adjust=True)
+            df = yf.Ticker(sym).history(period=period, interval=interval,
+                                        auto_adjust=True, prepost=prepost)
             if df is None or df.empty:
                 return []
             out: list[tuple] = []
@@ -83,14 +87,15 @@ def _f(x) -> float | None:
 
 
 def update_prices(conn, tickers, period: str = PRICE_PERIOD_LIVE,
-                  interval: str = PRICE_INTERVAL) -> dict:
+                  interval: str = PRICE_INTERVAL, prepost: bool = False) -> dict:
     """
     Verilen tickerlar için barları çekip cache'e yazar (sıralı — kilit riski yok).
+    prepost=True: ön/sonrası seans barları da dahil (gün-içi grafik/RVOL için).
     Dönüş: {ticker: yazılan_bar_sayısı}.
     """
     stats: dict[str, int] = {}
     for t in tickers:
-        bars = fetch_bars(t, period=period, interval=interval)
+        bars = fetch_bars(t, period=period, interval=interval, prepost=prepost)
         if bars:
             stats[t] = db.upsert_prices(conn, t, interval, bars)
     return stats

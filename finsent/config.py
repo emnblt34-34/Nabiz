@@ -59,11 +59,9 @@ TICKERS: dict[str, list[str]] = {
     "COIN":  ["coinbase"],
     "FROTO": ["froto", "ford otosan"],
     "ARCLK": ["arclk", "arçelik", "arcelik"],
-    # --- KRIPTO (canlı, 1 coin): en haber-zengin + en likit. 7/24 işler → SEANS YOK
-    #     (günlük kapanış = UTC gün sınırı; hisselerin düzenli-seans kapanışından farklı).
-    #     Stage 5: kripto kesitsel edge'i SEYRELTEBİLİR — eklendi ama izlenir. ---
-    "BTC":   ["btc", "bitcoin"],
 }
+# NOT (Stage 18→19): BTC denendi → kesitsel Sharpe 0.90'dan 0.73'e DÜŞTÜ (Stage 5 kripto-
+# seyreltme bulgusu CANLI doğrulandı) → kullanıcı kararıyla ÇIKARILDI. Canlı evren 41 hisse.
 
 # Borsa/bölge bağlamı — dil ve kaynak seçiminde kullanılır.
 TICKER_MARKET: dict[str, str] = {
@@ -77,7 +75,6 @@ TICKER_MARKET: dict[str, str] = {
     "LLY": "US", "CSCO": "US", "MU": "US", "INTC": "US", "PYPL": "US", "MRVL": "US",
     "TMUS": "US", "SNOW": "US", "CRWD": "US", "COIN": "US",
     "FROTO": "BIST", "ARCLK": "BIST",
-    "BTC": "CRYPTO",   # 7/24, seans yok (yf: BTC-USD)
 }
 
 # Kaynak türü bazında temel ağırlık. Haber sosyalden ağır çünkü daha az gürültülü.
@@ -158,7 +155,7 @@ def yf_symbol(ticker: str) -> str:
 # Kripto = büyük ölçüde bağımsız 3. faktör bloğu → kesitsel genişlik + edge'in
 # bağımsız bir varlık sınıfında da görünmesi = en güçlü OOS doğrulama.
 CRYPTO_TICKERS: dict[str, list[str]] = {
-    # NOT: BTC artık CANLI evrende (TICKERS) — burada tekrar yok (science_universe dup'ını önler).
+    "BTC":  ["btc", "bitcoin"],
     "ETH":  ["eth", "ethereum"],
     "SOL":  ["sol", "solana"],
     "BNB":  ["bnb", "binance coin"],

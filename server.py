@@ -27,7 +27,8 @@ from finsent.portfolio import cross_section, daily_check
 from finsent.signals import daytrade
 from finsent.evaluation import validation, benchmarks
 from finsent.pipeline import run_once
-from finsent.config import TICKERS, HORIZON_BARS, PRICE_PERIOD_BACKTEST, PRICE_PERIOD_LIVE
+from finsent.config import (TICKERS, TICKER_MARKET, HORIZON_BARS,
+                            PRICE_PERIOD_BACKTEST, PRICE_PERIOD_LIVE)
 from finsent.collectors import (
     RSSNewsCollector, RedditCollector, StockTwitsCollector, KAPCollector, SampleCollector,
     YFNewsCollector,
@@ -88,11 +89,13 @@ def _forecast_cycle():
         return
     try:
         conn = db.connect()
-        prices.update_prices(conn, list(TICKERS), period=PRICE_PERIOD_LIVE)
+        # prepost=True (Stage 19): ÖN-piyasa + SONRASI (after-hours) barları da dahil — grafikler
+        # ve RVOL artık seans-dışı hareketi de görür. (Gece/overnight hisselerde yfinance'te yok.)
+        prices.update_prices(conn, list(TICKERS), period=PRICE_PERIOD_LIVE, prepost=True)
         # 30dk mum grafiği için taze gün-içi barlar (öngörü YOK — sadece görsel durum; Stage 13).
-        prices.update_prices(conn, list(TICKERS), period="5d", interval="30m")
+        prices.update_prices(conn, list(TICKERS), period="5d", interval="30m", prepost=True)
         # 15dk: gün-içi RVOL & R:R Tier modülü için (Stage 16). 1mo ≈ 20-gün RVOL penceresi.
-        prices.update_prices(conn, list(TICKERS), period="1mo", interval="15m")
+        prices.update_prices(conn, list(TICKERS), period="1mo", interval="15m", prepost=True)
         forecast.resolve_due(conn)
         preds = forecast.forecast_all(conn, _fc["model"], list(TICKERS))
         forecast.log_predictions(conn, preds, HORIZON_BARS)
@@ -174,6 +177,31 @@ def index():
 
 
 # ---------------- API ----------------
+def _sessions() -> dict:
+    """Şu anki piyasa seansı (sinyal NE ZAMAN geçerli sorusu için). US: EDT (UTC-4, yaz);
+    BIST: TRT (UTC+3). Gece (overnight) hisselerde işlem yok — sinyaller sonraki seansa işaret eder."""
+    from datetime import datetime, timezone, timedelta
+    now = datetime.now(timezone.utc)
+    et = now - timedelta(hours=4)
+    m = et.hour * 60 + et.minute
+    if et.weekday() >= 5:
+        us = "kapalı (hafta sonu)"
+    elif 240 <= m < 570:
+        us = "ön-piyasa"
+    elif 570 <= m < 960:
+        us = "düzenli seans"
+    elif 960 <= m < 1200:
+        us = "sonrası (after-hours)"
+    else:
+        us = "kapalı (gece)"
+    trt = now + timedelta(hours=3)
+    bm = trt.hour * 60 + trt.minute
+    bist = "düzenli seans" if (trt.weekday() < 5 and 600 <= bm < 1080) else "kapalı"
+    return {"us": us, "bist": bist, "utc": now.strftime("%H:%M"),
+            "signal_timing": "Sinyaller bir SONRAKİ düzenli seans(lar)a işaret eder; gün-içi ufuklar "
+                             "(1s/3s) ön+sonrası seansı da kapsar (gece hariç — hisse işlemi yok)."}
+
+
 @app.get("/api/status")
 def status():
     return {
@@ -183,6 +211,7 @@ def status():
         "forecast_ready": _fc["model"] is not None,
         "forecast_model": _fc["model"].name if _fc["model"] else None,
         "cs_ready": _cs["model"] is not None,
+        "sessions": _sessions(),
     }
 
 
@@ -509,6 +538,60 @@ def dailycheck_api():
                         "tutarlılık günlerce birikince anlam kazanır. Model native ufku 5 gün (Stage 12); "
                         "burada 1-günlük tutarlılık + güven kalibrasyonu canlı izlenir.")
     return st
+
+
+def _interpret_news(ticker: str, sent: float, model_item: dict | None) -> str:
+    """Haber NEYE İŞARET EDİYOR — dürüst: duygu yönü + modelle uyum/çelişki (uydurma neden YOK)."""
+    pol = "olumlu" if sent > 0.1 else "olumsuz" if sent < -0.1 else "nötr"
+    base = f"{ticker} için {pol} duygu sinyali"
+    if not model_item or model_item.get("side") == "neutral":
+        return base + " · model bu hissede nötr/sıralama-ortası"
+    side = model_item.get("side")
+    good = (pol == "olumlu" and side == "long") or (pol == "olumsuz" and side == "short")
+    bad = (pol == "olumlu" and side == "short") or (pol == "olumsuz" and side == "long")
+    mtxt = "göreli GÜÇLÜ" if side == "long" else "göreli ZAYIF"
+    if good:
+        return base + f" · model de {mtxt} görüyor → UYUMLU (teyit)"
+    if bad:
+        return base + f" · ama model {mtxt} görüyor → ÇELİŞKİ (dikkat)"
+    return base + f" · model {mtxt}"
+
+
+@app.get("/api/newsfeed")
+def newsfeed_api(limit: int = 8):
+    """Anlık haber akışı + YORUM (neye işaret ediyor). Yorum = duygu yönü × model görüşü uyumu.
+    Dürüst: haber-etki kanalı ZAYIF (Stage 7); bu bir 'kesin sebep' değil, hizalama okumasıdır."""
+    from datetime import datetime, timezone, timedelta
+    since = (datetime.now(timezone.utc) - timedelta(hours=48)).isoformat()
+    conn = db.connect()
+    rows = conn.execute(
+        "SELECT * FROM records WHERE source_type IN ('news','disclosure') AND created_at>=? "
+        "ORDER BY created_at DESC LIMIT 300", (since,)).fetchall()
+    conn.close()
+    side_map = {it["ticker"]: it for it in _cs["ranking"]}
+    out, seen = [], set()
+    for r in rows:
+        tickers = json.loads(r["tickers"])
+        if not tickers:
+            continue
+        fp = r["fingerprint"]
+        if fp in seen:
+            continue
+        seen.add(fp)
+        t = tickers[0]
+        sent = r["sentiment_score"]
+        out.append({
+            "ticker": t, "market": TICKER_MARKET.get(t, "US"), "text": r["text"][:240],
+            "source": r["source"], "sentiment": round(sent, 3),
+            "credibility": round(r["credibility"], 2), "url": r["url"],
+            "created_at": r["created_at"],
+            "interpretation": _interpret_news(t, sent, side_map.get(t)),
+        })
+        if len(out) >= limit:
+            break
+    return {"items": out, "count": len(out),
+            "note": "Yorum = haber duygusu × model görüşü hizalaması. Haber-etki kanalı ZAYIF "
+                    "(Stage 7) — kesin sebep değil, dikkat/teyit okuması. Tavsiye değildir."}
 
 
 @app.get("/api/daytrade")

@@ -104,6 +104,15 @@
   .dtrow .rv{color:var(--amber);font-size:10.5px}
   .dtrow .bo{font-size:9px;color:var(--accent);background:rgba(124,92,255,.14);padding:1px 5px;border-radius:6px}
   .dtrow .lv{flex-basis:100%;font-size:10.5px;color:var(--muted);font-family:ui-monospace,monospace}
+  .sessbar{margin-top:10px;font-size:11px;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:7px 11px;line-height:1.5}
+  .sessbar b{color:var(--text);font-weight:600}
+  .newsbanner{margin-top:10px;background:linear-gradient(135deg,#161019,#1d1422);border:1px solid rgba(124,92,255,.22);border-radius:14px;padding:11px 13px;max-height:340px;overflow-y:auto}
+  .newsbanner .nbh{font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:7px;margin-bottom:7px}
+  .nbitem{padding:7px 0;border-bottom:1px solid var(--line)}
+  .nbhead{display:flex;align-items:center;gap:8px;font-size:11px;flex-wrap:wrap}
+  .nbtk{font-weight:700} .nbsrc{color:var(--faint)} .nbtime{color:var(--faint);margin-left:auto}
+  .nbtext{font-size:11.5px;color:var(--text);line-height:1.45;margin:3px 0 2px}
+  .nbinterp{font-size:10.5px;color:var(--amber);line-height:1.4}
   .cslist{margin-top:10px}
   .csrow{display:flex;align-items:center;gap:9px;padding:7px 0;border-top:1px solid var(--line);font-size:12.5px}
   .csrow .rk{color:var(--faint);font-size:10.5px;width:16px;text-align:right;font-family:ui-monospace,monospace}
@@ -132,6 +141,7 @@
   <div class="top">
     <span class="dot"></span><h1>Nabız</h1><span class="sub">yerel sunucu</span>
   </div>
+  <div id="newsbanner"></div>
   <div class="daily"><div class="h">📊 Günlük Analiz</div><p id="daily">Veri toplanıyor…</p></div>
   <div class="mood">
     <div class="mrow"><span class="l">Piyasa nabzı</span><span class="v" id="verdict">—</span></div>
@@ -159,7 +169,7 @@ const pctf=v=>v==null?"–":Math.round(v*100)+"%";
 async function load(){
   $("ri").className="spin";
   try{
-    const [scores,st,dy,fc,cs,dt,dc]=await Promise.all([
+    const [scores,st,dy,fc,cs,dt,dc,nf]=await Promise.all([
       fetch("/api/scores?window=24h").then(r=>r.json()),
       fetch("/api/status").then(r=>r.json()),
       fetch("/api/daily").then(r=>r.json()),
@@ -167,12 +177,13 @@ async function load(){
       fetch("/api/crosssection").then(r=>r.json()).catch(()=>null),
       fetch("/api/daytrade").then(r=>r.json()).catch(()=>null),
       fetch("/api/dailycheck").then(r=>r.json()).catch(()=>null),
+      fetch("/api/newsfeed").then(r=>r.json()).catch(()=>null),
     ]);
     SCORES=scores; $("daily").textContent=dy.text||"—";
     FC={meta:fc,items:{}}; if(fc&&fc.items) fc.items.forEach(i=>FC.items[i.ticker]=i);
     const t=st.last?new Date(st.last*1000).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"}):null;
     $("mU").textContent = st.running?"toplanıyor…":(t?("son: "+t):"ilk toplama sürüyor…");
-    renderCsx(cs); renderDailycheck(dc); renderDaytrade(dt); renderFcsum(); render();
+    renderNewsbanner(nf, st.sessions); renderCsx(cs); renderDailycheck(dc); renderDaytrade(dt); renderFcsum(); render();
   }catch(e){
     $("list").innerHTML='<div class="state"><h3>Sunucuya ulaşılamadı</h3><p>server.py çalışıyor mu? Terminali kontrol et.</p></div>';
   }finally{$("ri").className="";}
@@ -304,6 +315,24 @@ function renderDailycheck(dc){
     <div class="rec" style="margin-top:6px;color:var(--amber)">🕘 ${esc(dc.session_basis||'')}</div>
     <div class="rec" style="margin-top:4px;color:var(--faint)">${esc(dc.disclaimer||'')}</div>
   </div>`;
+}
+
+function renderNewsbanner(nf, sessions){
+  const box=$("newsbanner");
+  const sess = sessions ? `<div class="sessbar">🕘 <b>Seans</b> — ABD: <b>${esc(sessions.us)}</b> · BIST: <b>${esc(sessions.bist)}</b> <span style="color:var(--faint)">(UTC ${esc(sessions.utc)})</span><br><span style="color:var(--faint)">${esc(sessions.signal_timing||'')}</span></div>` : '';
+  if(!nf||!nf.items||!nf.items.length){ box.innerHTML=sess; return; }
+  const items=nf.items.map(n=>{
+    const sc=n.sentiment>0.1?'var(--pos)':n.sentiment<-0.1?'var(--neg)':'var(--muted)';
+    const ic=n.sentiment>0.1?'📈':n.sentiment<-0.1?'📉':'•';
+    const tm=n.created_at?new Date(n.created_at).toLocaleString('tr-TR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+    const link=n.url?`onclick="window.open('${esc(n.url)}','_blank')" style="cursor:pointer"`:'';
+    return `<div class="nbitem" ${link}>
+      <div class="nbhead"><span class="nbtk" style="color:${sc}">${ic} ${esc(n.ticker)}</span><span class="nbsrc">${esc(n.source||'')}</span><span class="nbtime">${tm}</span></div>
+      <div class="nbtext">${esc(n.text)}</div>
+      <div class="nbinterp">💡 ${esc(n.interpretation||'')}</div>
+    </div>`;
+  }).join('');
+  box.innerHTML=sess+`<div class="newsbanner"><div class="nbh">🔔 Anlık Haberler <span class="badge st-mid">${nf.count||nf.items.length}</span></div>${items}<div class="rec" style="color:var(--faint);font-size:10px;margin-top:6px">${esc(nf.note||'')}</div></div>`;
 }
 
 function render(){

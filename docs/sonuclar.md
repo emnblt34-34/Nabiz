@@ -568,3 +568,21 @@ sıralaması (anlık/saatlik DEĞİL)"* + *"sinyal = göreli güç skoru (~−1.
 kesitsel sinyal ANLIK panel rozeti veya saatlik tahmin değildir; 5-günlük göreli güç sıralamasıdır.
 Saatlik=forecaster (1s+3s), günlük/haftalık=kesitsel mum projeksiyonu — her biri etiketinde ufkuyla.
 
+
+## Stage 19 — BTC geri çıkarıldı + genişletilmiş seans + anlık haber-yorum (2026-06-17)
+
+**(BTC ÇIKTI):** Stage 18'de BTC eklenince kesitsel Sharpe **0.90→0.73**'e düştü (Stage 5 kripto-
+seyreltme bulgusu CANLI doğrulandı). Kullanıcı kararıyla çıkarıldı → evren tekrar **41 hisse**.
+Dürüst sonuç kayda geçti: kripto, hisse momentum kesidini ölçülebilir biçimde zayıflatıyor.
+
+**(GENİŞLETİLMİŞ SEANS — pre/post):** `prices.fetch_bars(prepost=True)` eklendi; canlı gün-içi
+çekimler (60/30/15dk) artık **ön-piyasa + sonrası (after-hours)** barlarını da içerir → grafikler ve
+RVOL seans-dışı hareketi görür. **Gece (overnight) bireysel hisselerde yfinance'te YOK** (yalnız
+vadeli/kripto) — dürüstçe sınır belirtildi. `/api/status.sessions`: anlık ABD/BIST seansı + sinyal
+zamanlaması ("sinyaller sonraki düzenli seansa işaret eder; gün-içi ufuklar pre/post kapsar").
+
+**(ANLIK HABER + YORUM):** `/api/newsfeed` + üstte **🔔 Anlık Haberler** bildirim banner'ı. Her haber
+için YORUM = duygu yönü × model görüşü hizalaması: olumlu haber + model "göreli güçlü" → UYUMLU
+(teyit); olumlu haber ama model "zayıf" → ÇELİŞKİ (dikkat). **Dürüst:** haber-etki kanalı ZAYIF
+(Stage 7) — kesin sebep değil, hizalama/dikkat okuması. Sahte nedensellik üretilmez.
+
