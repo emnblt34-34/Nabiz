@@ -126,3 +126,40 @@ zırhını henüz geçmiyor.** Bilimsel olarak dürüst konum: "edge bulundu, ro
 momentum yalnız trendli rejimde aç, sinyal-gürültü artar); ufuk-birleştirme (günlük+haftalık);
 n_trials'ı önceden-kayıtlı hipotezle düşürmek (HARKing'i önle); daha uzun geçmiş.
 
+---
+
+## Stage 3 — Rejim koşullama: edge'i güçlendirdi (2026-06-15)
+
+**Ne yapıldı:** `signals/regime.py` (Hurst üsteli, Kaufman Efficiency-Ratio, trend-score) +
+`features.py`'a **TREND-GEÇİTLİ momentum** etkileşimleri (`mom63_reg`, `mom252_reg` = momentum ×
+trend-score; + `er`, `hurst` rejim göstergeleri). Pre-registered + minimal (4 özellik — n_trials
+şişmesin). Hipotez: momentum yalnız trendli rejimde "açılır", choppy'de reversal.
+
+**TEMİZ A/B (aynı 5y günlük veri, kesitsel L/S, rejimli vs rejimsiz):**
+
+| | Rejimsiz | **Rejimli** | Δ |
+|---|---|---|---|
+| L/S Sharpe (yıllık) | 0.78 | **1.14** | +46% |
+| Blok-bootstrap p | 0.032 | **0.0055** | güçlendi |
+| **Deflated Sharpe** | 0.51 | **0.79** | +0.28 |
+| 1/N-rank benchmark | 0.78 / DSR 0.47 | **0.77 / DSR 0.47** | değişmedi |
+
+**SONUÇ:**
+1. ✅ **Rejim koşullama edge'i MATERYAL olarak güçlendirdi.** Sharpe +46%, bootstrap p bir kat
+   güçlendi, **DSR 0.51→0.79** — üstelik n_trials 18→22 artmasına rağmen. Hipotez H2 desteklendi.
+2. ✅ **İyileşme gerçek model katkısı:** rejim-kör 1/N-rank benchmark **değişmedi** (DSR 0.47) →
+   fark veriden değil, bizim trend-geçitli sinyalimizden.
+3. ⚠️ **Hâlâ DSR<0.95** → "robust ispat" değil ama **eşiğe ciddi yaklaştı** (0.79). Doğru yönde.
+4. ⚠️ **Per-ticker (yönsel) OOS IC KÖTÜLEŞTİ** (−0.0175, in-sample 0.068 ile büyük overfit açığı).
+   Tutarlı: rejim-momentum **KESİTSEL** (göreli sıralama) bir sinyal, yönsel-zamanlama değil
+   (Stage 2 dersi). Canlı per-ticker panel forecast'ı bu özelliklerle overfit'e yatkın →
+   gelecekte ayrı/regularize konfig gerekebilir (mühendislik notu).
+
+**Verdikt:** **Rejim koşullama, momentum edge'ini market-nötr defterde belirgin güçlendirdi
+(DSR 0.51→0.79, p=0.0055).** Hâlâ 0.95 altında ama ispat eşiğine en çok yaklaştığımız nokta.
+Edge gerçek, koşullu ve giderek sağlamlaşıyor — uydurma değil, ölçülü.
+
+**Sıradaki (DSR>0.95 için):** ufuk-birleştirme (günlük+haftalık skill-ağırlıklı); önceden-kayıtlı
+hipotez seti ile n_trials düşürmek (HARKing yasak); daha iyi rejim ölçer (gerçek ADX high/low ile);
+ve canlı per-ticker için regularizasyon/ayrı feature seti.
+

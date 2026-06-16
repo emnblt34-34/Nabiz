@@ -25,7 +25,9 @@ finsent/
   pipeline.py      # collect → process → dedupe → store → aggregate orkestrasyonu
 
   # — Tahmin katmanı —
-  features.py      # özellik mühendisliği (fiyat + momentum + duygu); no-look-ahead
+  signals/
+    regime.py      # rejim göstergeleri (Hurst, Efficiency-Ratio, trend-score) — KOŞULLAMA
+  features.py      # özellik mühendisliği (fiyat + momentum + rejim-geçitli + duygu); no-look-ahead
   forecast.py      # model: RuleForecaster + ML + Blend; fit_from_data; canlı tahmin/günlük
 
   # — Bilim katmanı (evaluation/) — tahmin katmanına bağlı, üstüne portföy gelir —

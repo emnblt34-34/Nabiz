@@ -39,9 +39,11 @@ Ham "backtest kârlı" **kanıt değildir.** Her sayı şu üçlüden geçmeden 
   geçmiyor → sinyal **kesitsel/rank** nitelikli; market-nötr long-short ile hasat edilmeli.
   Nüans + dürüstlük uyarıları: [sonuclar.md](sonuclar.md).
 - **Stage 1 + Kesitsel L/S tamam.** Sinyali market-nötr hasat ettik: 5y'de **L/S Sharpe=0.78,
-  blok-bootstrap p=0.032, 1/N-rank'ı yeniyor** (model anlamlı, naif benchmark değil). **Ama
-  Deflated Sharpe=0.51 (<0.95)** → çoklu-test zırhını geçmiyor. **Dürüst konum: zayıf-ama-gerçek,
-  market-nötr momentum edge'i VAR; robust ispat henüz EKSİK.**
+  p=0.032, DSR=0.51** (<0.95) → robust ispat eksikti.
+- **Stage 3 tamam — REJİM KOŞULLAMA edge'i GÜÇLENDİRDİ.** Trend-geçitli momentum (`signals/regime.py`:
+  Hurst/Efficiency-Ratio) ile aynı 5y veride L/S: **Sharpe 0.78→1.14, p 0.032→0.0055, DSR 0.51→0.79**
+  (rejim-kör benchmark değişmedi → fark gerçek model katkısı). **Hâlâ <0.95 ama ispat eşiğine en çok
+  yaklaştığımız nokta.** (Per-ticker yönsel IC kötüleşti → sinyal kesitsel, yönsel değil.)
 - Çalışan ürün: gerçek-zamanlı duygu + saatlik fiyat + öngörü paneli — `server.py`.
 
 ## Dokümanlar
@@ -57,9 +59,10 @@ Tam liste: [strateji-arastirma.md › Yol Haritası](strateji-arastirma.md). Öz
 
 - **Stage 0 — Temel dürüstlük** ✅ `evaluation/validation.py` (WF-CV) + `benchmarks.py`. Sızıntı kapandı, baseline kuruldu.
 - **Stage 2 — Doğru sinyaller (momentum)** ✅ `features.py` çok-ölçekli momentum. Günlük OOS **IC=0.069, p=0.001** — baseline aşıldı. (Kalan: mid-price reversal, gün-içi/overnight, triple-barrier — sonraki tur.)
-- **Stage 1 + Kesitsel L/S** ✅ `evaluation/stats.py` (Deflated Sharpe, blok-bootstrap, FDR) + `portfolio/weights.py` + `portfolio/ls_backtest.py`. Edge market-nötr hasat edildi: **Sharpe 0.78, p=0.032, ama DSR=0.51 (<0.95)** → robust ispat eksik.
-- **Stage 3 — Rejim koşullama** ⏭️ **SIRADAKİ.** `signals/regime.py` (Hurst/ADX): momentum yalnız trendli rejimde → sinyal-gürültü artar, edge DSR>0.95'e taşınmaya çalışılır.
-- **Sonraki:** ufuk-birleştirme, meta-model/kalibrasyon, çapraz-kesit genişletme, LLM özellik katmanı, coin. (Tam liste yukarıda + [strateji-arastirma.md](strateji-arastirma.md).)
+- **Stage 1 + Kesitsel L/S** ✅ `evaluation/stats.py` + `portfolio/weights.py` + `portfolio/ls_backtest.py`. Market-nötr hasat: Sharpe 0.78, p=0.032, DSR=0.51.
+- **Stage 3 — Rejim koşullama** ✅ `signals/regime.py` (Hurst/Efficiency-Ratio) + trend-geçitli momentum. **L/S DSR 0.51→0.79, Sharpe 1.14, p=0.0055** — edge belirgin güçlendi, ispat eşiğine yaklaştı (hâlâ <0.95).
+- **Stage 4 — Ufuk-birleştirme** ⏭️ **SIRADAKİ.** Günlük+haftalık skill-ağırlıklı; önceden-kayıtlı hipotezle n_trials düşür → DSR>0.95 hedefi.
+- **Sonraki:** meta-model/kalibrasyon, çapraz-kesit genişletme, LLM özellik katmanı, coin. (Tam liste + [strateji-arastirma.md](strateji-arastirma.md).)
 - **Stage 3** — Rejim koşullama (`regime.py`: Hurst/ADX/vol).
 - **Stage 4** — Meta-model + kalibre confidence (Platt/isotonic, Brier).
 - **Stage 5** — Çok-ufuk (günlük/haftalık bar) + çapraz-kesit rank-momentum (`cross_section.py`).

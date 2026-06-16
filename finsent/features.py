@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import math
 
+from .signals import regime
+
 BASE_PRICE_FEATURES = ["ret1", "ret3", "ret6", "vol", "sma_dist", "rsi"]
 
 # Çok-ölçekli momentum ailesi (Stage 2) — araştırmanın "gerçek kanıt bölgesi".
@@ -28,7 +30,12 @@ MOMENTUM_LOOKBACKS = [21, 63, 126, 252]
 MOMENTUM_FEATURES = ([f"mom_{n}" for n in MOMENTUM_LOOKBACKS]
                      + [f"momsc_{n}" for n in MOMENTUM_LOOKBACKS])
 
-PRICE_FEATURES = BASE_PRICE_FEATURES + MOMENTUM_FEATURES
+# Rejim koşullama (Stage 3) — SİNYAL DEĞİL: rejim göstergeleri (er, hurst) + momentumu
+# trend-gücüyle çarpan etkileşimler (mom*_reg). Trendli rejimde momentum, choppy'de
+# reversal. Pre-registered + MİNİMAL (çoklu-test/n_trials şişmesin diye 4 ile sınırlı).
+REGIME_FEATURES = ["er", "hurst", "mom63_reg", "mom252_reg"]
+
+PRICE_FEATURES = BASE_PRICE_FEATURES + MOMENTUM_FEATURES + REGIME_FEATURES
 SENT_FEATURES = ["sent", "mom", "posneg", "logvol"]
 FEATURES = PRICE_FEATURES + SENT_FEATURES
 
@@ -95,7 +102,20 @@ def price_features(closes: list[float], i: int) -> dict | None:
         "rsi": _rsi(c[:i + 1]),
     }
     feat.update(momentum_features(closes, i))
+    feat.update(_regime_features(closes, i, feat))
     return feat
+
+
+def _regime_features(closes: list[float], i: int, feat: dict) -> dict:
+    """Rejim göstergeleri + TREND-GEÇİTLİ momentum (Stage 3 koşullama).
+    ts ∈ [-1,1]: >0 trend (momentum açılır), <0 choppy (reversal). mom*_reg = mom · ts."""
+    ts = regime.trend_score(closes, i, 63)
+    return {
+        "er": (ts + 1.0) / 2.0,
+        "hurst": regime.hurst(closes, i, 100),
+        "mom63_reg": feat.get("mom_63", 0.0) * ts,
+        "mom252_reg": feat.get("mom_252", 0.0) * ts,
+    }
 
 
 def momentum_features(closes: list[float], i: int) -> dict:
