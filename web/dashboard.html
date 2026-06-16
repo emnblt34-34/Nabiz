@@ -96,6 +96,7 @@
   .sd.neutral{color:var(--muted);background:var(--surface2)}
   .csrow .sc{font-family:ui-monospace,monospace;font-size:11.5px;width:48px;text-align:right;font-variant-numeric:tabular-nums}
   .csrow .se{font-family:ui-monospace,monospace;font-size:11px;min-width:60px;text-align:right;font-variant-numeric:tabular-nums}
+  .csrow .nw{font-size:10px;min-width:30px;text-align:right;color:var(--amber)}
   .csrow .rg{font-size:10px;color:var(--faint);margin-left:auto}
   .spin{animation:rot 1s linear infinite}@keyframes rot{to{transform:rotate(360deg)}}
 </style>
@@ -185,11 +186,13 @@ function renderCsx(cs){
     const se = it.sentiment==null
       ? `<span class="se" style="color:var(--faint)" title="duygu verisi yok">💬 –</span>`
       : `<span class="se" style="color:${col(it.sentiment)}" title="${it.sent_n} yorum/haber">💬 ${(it.sentiment>=0?'+':'')+(+it.sentiment).toFixed(2)}</span>`;
+    const nb = (it.news_n>0)
+      ? `<span class="nw" title="son 48 saatte ${it.news_n} haber">📰${it.news_n}</span>` : '<span class="nw"></span>';
     return `<div class="csrow"><span class="rk">${it.rank}</span>
       <span class="tk">${it.ticker}</span><span class="mk">${it.market}</span>
       <span class="sd ${it.side}">${lab}</span>
       <span class="sc" style="color:${col(it.signal)}">${sgn}</span>
-      ${se}
+      ${se}${nb}
       <span class="rg">${esc(it.regime||'')}</span></div>`;
   }).join("");
   $("csx").innerHTML=`<div class="csx">

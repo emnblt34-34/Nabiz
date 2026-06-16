@@ -10,9 +10,12 @@ arayüzde DÜRÜSTÇE gösterilir — "kesin ispat değil" diye. (bkz. docs/sonu
 """
 from __future__ import annotations
 
+import json
+from datetime import datetime, timezone, timedelta
+
 from .. import db, prices, features, forecast, fx
 from ..config import TICKER_MARKET
-from ..evaluation import stats
+from ..evaluation import stats, backtest
 from . import weights, ls_backtest
 
 CS_HORIZON = 5          # gün (ufuk)
@@ -87,6 +90,13 @@ def rank_now(conn, fc, tickers, interval: str = CS_INTERVAL, usd: bool = True) -
     # Canlı DUYGU (24h) — momentum sinyalinin yanında göster (haber/yorum katmanı).
     sent_map = {s["ticker"]: (s["sentiment"], s["volume"])
                 for s in db.latest_scores(conn, window="24h")}
+    # (c) Son 48h HABER sayısı (yf:news + diğer news) — "önemli haber var" göstergesi.
+    since = (datetime.now(timezone.utc) - timedelta(hours=48)).isoformat()
+    news_cnt: dict[str, int] = {}
+    for nr in conn.execute(
+            "SELECT tickers FROM records WHERE source_type='news' AND created_at>=?", (since,)):
+        for tk in json.loads(nr["tickers"]):
+            news_cnt[tk] = news_cnt.get(tk, 0) + 1
 
     w = weights.cross_sectional_weights(sigs, vols)
     order = sorted(sigs, key=lambda t: sigs[t], reverse=True)
@@ -105,5 +115,85 @@ def rank_now(conn, fc, tickers, interval: str = CS_INTERVAL, usd: bool = True) -
             "market": TICKER_MARKET.get(t, "US"),
             "sentiment": round(sent, 3) if sent is not None else None,
             "sent_n": sv or 0,
+            "news_n": news_cnt.get(t, 0),   # son 48h haber sayısı
         })
     return out
+
+
+# ---------------------------------------------------------------------------
+# (b) Forward SENTIMENT ABLATION — duygu fiyat-ötesi öngörü katıyor mu?
+# Geçmişe backtest EDİLEMEZ (tarihsel duygu yok); tek dürüst yol bu ileriye-dönük A/B.
+# Günde bir kez logla, ufuk dolunca gerçek getiriyle eşle, marjinal katkıyı ölç.
+# ---------------------------------------------------------------------------
+def log_ablation(conn, ranking: list[dict], horizon_days: int = 5) -> int:
+    """Bugün için her hisseye: fiyat-sinyali + canlı duygu + USD fiyat logla (1/gün)."""
+    now = datetime.now(timezone.utc)
+    today = now.strftime("%Y-%m-%d")
+    if conn.execute("SELECT 1 FROM cs_ablation WHERE made_at LIKE ? LIMIT 1",
+                    (today + "%",)).fetchone():
+        return 0  # bugün zaten loglandı
+    made = now.isoformat()
+    target = (now + timedelta(days=horizon_days)).isoformat()
+    n = 0
+    for it in ranking:
+        t = it["ticker"]
+        closes, _ = fx.usd_series(conn, t, CS_INTERVAL)
+        if not closes:
+            continue
+        conn.execute(
+            """INSERT OR IGNORE INTO cs_ablation
+               (id, made_at, target_ts, ticker, price_signal, sentiment, sent_n, price_at)
+               VALUES (?,?,?,?,?,?,?,?)""",
+            (f"{today}|{t}", made, target, t, it["signal"],
+             it.get("sentiment"), it.get("sent_n") or 0, closes[-1]))
+        n += 1
+    conn.commit()
+    return n
+
+
+def resolve_ablation(conn, interval: str = CS_INTERVAL) -> int:
+    """Ufku dolan ablation kayıtlarını USD gerçek getiriyle eşle."""
+    now_iso = datetime.now(timezone.utc).isoformat()
+    resolved = 0
+    for r in conn.execute("SELECT * FROM cs_ablation WHERE realized_return IS NULL").fetchall():
+        if r["target_ts"] > now_iso:
+            continue
+        closes, dates = fx.usd_series(conn, r["ticker"], interval)
+        tgt = r["target_ts"][:10]
+        close_at = next((c for d, c in zip(dates, closes) if d >= tgt), None)
+        if close_at is None or not r["price_at"]:
+            continue
+        ret = (close_at - r["price_at"]) / r["price_at"]
+        conn.execute("UPDATE cs_ablation SET realized_return=?, resolved_at=? WHERE id=?",
+                     (round(ret, 5), now_iso, r["id"]))
+        resolved += 1
+    conn.commit()
+    return resolved
+
+
+def ablation_stats(conn) -> dict:
+    """Duygunun MARJİNAL katkısı: fiyat-sinyali kontrol edilince duygu hâlâ öngörü taşıyor mu?"""
+    rows = conn.execute(
+        """SELECT price_signal, sentiment, realized_return FROM cs_ablation
+           WHERE realized_return IS NOT NULL AND sentiment IS NOT NULL""").fetchall()
+    n = len(rows)
+    open_n = conn.execute("SELECT COUNT(*) c FROM cs_ablation WHERE realized_return IS NULL").fetchone()["c"]
+    if n < 30:
+        return {"n_resolved": n, "open": open_n,
+                "note": "yeterli veri yok — forward birikiyor (geçmişe backtest edilemez)."}
+    ps = [r["price_signal"] for r in rows]
+    se = [r["sentiment"] for r in rows]
+    ry = [r["realized_return"] for r in rows]
+    # fiyat-sinyalini regres et, kalıntıya karşı duygu korelasyonu = MARJİNAL katkı
+    mp, my = sum(ps) / n, sum(ry) / n
+    varp = sum((p - mp) ** 2 for p in ps) or 1e-9
+    b = sum((p - mp) * (y - my) for p, y in zip(ps, ry)) / varp
+    a = my - b * mp
+    resid = [y - (a + b * p) for p, y in zip(ps, ry)]
+    return {
+        "n_resolved": n, "open": open_n,
+        "ic_price": round(backtest.pearson(ps, ry), 4),
+        "ic_sent_raw": round(backtest.pearson(se, ry), 4),
+        "sent_marginal_partial_corr": round(backtest.pearson(se, resid), 4),
+        "note": "sent_marginal > 0 ve büyürse: duygu FİYAT-ÖTESİ öngörü katıyor demektir.",
+    }

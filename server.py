@@ -119,6 +119,9 @@ def _cs_cycle():
     try:
         conn = db.connect()
         _cs["ranking"] = cross_section.rank_now(conn, _cs["model"], list(TICKERS))
+        # (b) forward sentiment ablation: olgunlaşanı sonuçla + bugünü logla (1/gün)
+        cross_section.resolve_ablation(conn)
+        cross_section.log_ablation(conn, _cs["ranking"])
         conn.close()
     except Exception as e:
         print("[crosssection] cycle hata:", e)
@@ -366,6 +369,17 @@ def crosssection():
                 "geçti (DSR~0.96, p~0.002). TL-bazlı 'güçlü' sinyal kur artefaktıydı (Stage 6).",
         "disclaimer": "Yatırım tavsiyesi değildir; edge zayıf (Sharpe~0.5) ama istatistiksel anlamlı.",
     }
+
+
+@app.get("/api/ablation")
+def ablation():
+    """(b) Forward sentiment ablation: duygu fiyat-ötesi öngörü katıyor mu? (zamanla birikir)."""
+    conn = db.connect()
+    st = cross_section.ablation_stats(conn)
+    conn.close()
+    st["disclaimer"] = ("Gerçek duygu geçmişe backtest edilemez; bu ileriye-dönük A/B "
+                        "haftalar/aylar içinde birikir. sent_marginal>0 = duygu değer katıyor.")
+    return st
 
 
 if __name__ == "__main__":

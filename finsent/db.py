@@ -89,6 +89,23 @@ CREATE TABLE IF NOT EXISTS predictions (
 );
 CREATE INDEX IF NOT EXISTS idx_pred_ticker ON predictions(ticker, made_at);
 CREATE INDEX IF NOT EXISTS idx_pred_open ON predictions(realized_return);
+
+-- Forward sentiment ABLATION günlüğü: duygu fiyat-ötesi öngörü katıyor mu? Günde bir kez
+-- her hisse için fiyat-sinyali + canlı duygu loglanır; ufuk dolunca gerçek getiriyle eşlenir.
+-- Geçmişe backtest EDİLEMEZ (tarihsel duygu yok) → tek dürüst yol bu ileriye-dönük A/B.
+CREATE TABLE IF NOT EXISTS cs_ablation (
+    id            TEXT PRIMARY KEY,   -- gün|ticker
+    made_at       TEXT NOT NULL,
+    target_ts     TEXT NOT NULL,      -- olgunlaşma (made + horizon gün)
+    ticker        TEXT NOT NULL,
+    price_signal  REAL NOT NULL,      -- model (fiyat+momentum+rejim) sinyali
+    sentiment     REAL,               -- canlı 24h duygu
+    sent_n        INTEGER,
+    price_at      REAL NOT NULL,      -- USD kapanış
+    realized_return REAL,             -- olgunlaşınca (USD)
+    resolved_at   TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_abl_open ON cs_ablation(realized_return);
 """
 
 
