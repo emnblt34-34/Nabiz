@@ -32,16 +32,22 @@ def cross_sectional_weights(signals: dict, vols: dict, cap: float = 0.25) -> dic
     # 2) ters-vol ölçekle (oynak isimler risk bütçesini gasp etmesin)
     a = {t: g[t] / (vols.get(t) if vols.get(t) else 1.0) for t in ts}
 
-    # 3) dolar-nötrle (ters-vol nötrlüğü bozar → ortalamayı çıkar)
-    m = sum(a.values()) / n
-    a = {t: a[t] - m for t in ts}
+    def _demean(d):
+        m = sum(d.values()) / len(d)
+        return {t: v - m for t, v in d.items()}
 
-    # 4) brüt=1 normalize, sonra cap, sonra tekrar normalize
-    gross = sum(abs(v) for v in a.values()) or 1.0
-    w = {t: a[t] / gross for t in ts}
-    w = {t: max(-cap, min(cap, v)) for t, v in w.items()}
-    gross2 = sum(abs(v) for v in w.values()) or 1.0
-    w = {t: v / gross2 for t, v in w.items()}
+    def _gnorm(d):
+        gr = sum(abs(v) for v in d.values()) or 1.0
+        return {t: v / gr for t, v in d.items()}
+
+    # 3) ÖNCELİK Σw=0 (market-nötrlük — asıl bilimsel şart). Sharpe ölçek-bağımsız
+    # olduğundan brüt'ü (Σ|w|) kesin 1 yapmak ZORUNLU değil; cap soft konsantrasyon limiti.
+    # Sıra: demean → brüt~1 → cap → demean (Σw=0 KESİN, cap yaklaşık).
+    # NOT: eski sürüm cap'ten SONRA yalnız normalize ediyordu → Σw≠0 (artık net piyasa
+    # maruziyeti; market-nötr ölçümü bozar, Sharpe'ı şişirebilir). Bu test'le yakalandı.
+    a = _gnorm(_demean(a))
+    a = {t: max(-cap, min(cap, v)) for t, v in a.items()}   # cap
+    w = _demean(a)                                          # Σw=0 KESİN (küçük kaydırma)
 
     for t in signals:
         w.setdefault(t, 0.0)

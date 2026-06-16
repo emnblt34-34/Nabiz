@@ -357,3 +357,42 @@ beklenen sonucu: **kısa ufuk = en zayıf** (saatler mean-revert/gürültü), **
 edge** (momentum). Sistem 3-saatlik tahminini üretir ve siciliyle dürüstçe sunar; ama "güçlü
 3-saatlik öngörü" yoktur — ve bunu uydurmuyoruz.
 
+---
+
+## Stage 11 — Test suite bir bug yakaladı → DSR EŞİĞİ AŞILDI (2026-06-16)
+
+**Ne yapıldı:** `tests/test_integrity.py` (bağımlılıksız, pytest opsiyonel) — no-look-ahead
+(kritik), CV purge/embargo, kesitsel ağırlık ve istatistik testleri. 9 testten 8'i geçti.
+
+**No-look-ahead testleri GEÇTİ** → özelliklerde sızıntı yok; tüm önceki sonuçlar bu açıdan temiz.
+
+**1 test GERÇEK BUG yakaladı:** `cross_sectional_weights` cap uyguladıktan sonra yalnız
+normalize ediyordu → **Σw ≠ 0 (dolar-nötr DEĞİL).** Yani L/S defterinde **artık net piyasa
+maruziyeti** vardı — market-nötr ölçümü kirletiyordu. Düzeltildi (cap → demean ile **Σw=0 kesin**).
+
+**KRİTİK YENİDEN ÖLÇÜM** (gerçekten market-nötr ağırlıklarla, aynı 16y USD veri):
+
+| | Eski (buglı) | Düzeltilmiş |
+|---|---|---|
+| Sharpe | 0.52 | **0.56** |
+| bootstrap p | 0.0065 | **0.0015** |
+| **Deflated Sharpe (n=7)** | 0.935 | **0.963** |
+| DSR (n=3 / n=22) | 0.970 / 0.789 | **0.991 / 0.888** |
+
+Edge **ŞİŞMEDİ, AKSİNE İYİLEŞTİ** — artık-maruziyet gürültü ekliyormuş; gerçek nötrlük sinyali
+temizledi. Robustness korundu: **4/4 alt-dönem pozitif, bootstrap Sharpe p05=+0.29.**
+
+**SONUÇ — önceden-kayıtlı kriter İLK KEZ KARŞILANDI:** H5 kuralı (DSR(n=7)>0.95 **VE**
+bootstrap p<0.05) artık sağlanıyor: **DSR(7)=0.963 ✓ ve p=0.0015 ✓.** + 27 yıl dayanıklı.
+
+**DÜRÜST KALİBRASYON (overclaim YOK):**
+- Edge **hâlâ ZAYIF** (Sharpe 0.56, IC ~0.05) — "yüksek öngörülebilirlik" DEĞİL.
+- En muhafazakâr sayımda (n_trials=22) DSR=0.888 (hâlâ <0.95). Yani "proof", dürüst n_trials
+  aralığının **elverişli ucunda** (n=3–7'de geçer, n=22'de geçmez).
+- Ama kritik nokta: **bir test'in yakaladığı bug-fix** bizi eşiğin üstüne taşıdı — sonucu
+  tuning/data-snoop ile DEĞİL, bir HATAYI düzelterek. Bu, metodolojinin (ve test yazmanın)
+  değerinin en somut kanıtı.
+
+**Yeni dürüst başlık:** "Borsa para-nötr, kesitsel, rejim+olay-koşullu olarak **zayıf ama
+önceden-kayıtlı protokolde istatistiksel anlamlı ve 27 yıl dayanıklı** biçimde öngörülebilir."
+

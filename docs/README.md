@@ -53,8 +53,13 @@ Ham "backtest kârlı" **kanıt değildir.** Her sayı şu üçlüden geçmeden 
   çevrilince (para-nötr) 5y edge YOK OLUYOR (Sharpe 1.14→0.00, p→0.50). Gerçek para-nötr edge
   ZAYIF: yalnız 16y'de marjinal anlamlı (Sharpe 0.45, p=0.006), son 5y'de yok. Titiz denomine
   **kendi artefaktımızı yakaladı** → projeyi daha güvenilir yapar. [sonuclar.md](sonuclar.md).
-- Çalışan ürün: duygu paneli + **USD-bazlı kesitsel öngörü** (para-nötr, dürüst zayıf sicil) +
-  saatlik rozet (gürültü) — `server.py`.
+- **Stage 7+11 — HABER KANALI + TEST → EŞİK AŞILDI.** Hacim-olay (haber proxy) edge'i güçlendirdi.
+  **Stage 11: `tests/` bir ağırlık bug'ı (dolar-nötr DEĞİL) yakaladı; düzeltince edge İYİLEŞTİ ve
+  önceden-kayıtlı eşiği AŞTI: DSR(7)=0.963>0.95, p=0.0015, 27y dayanıklı.** İlk kez H5 kriteri
+  karşılandı — **zayıf ama önceden-kayıtlı protokolde anlamlı** (n=22'de 0.888, hâlâ sınırda).
+  (3-saatlik ufuk ~yazı-tura; dürüst.)
+- Çalışan ürün: duygu paneli + **USD-bazlı kesitsel öngörü** (para-nötr, dürüst sicil) +
+  3-saatlik rozet (zayıf) — `server.py`.
 
 ## Dokümanlar
 | Belge | İçerik |
@@ -99,7 +104,13 @@ python server.py            # Windows'ta UTF-8 için: set PYTHONIOENCODING=utf-8
 
 # 2) DÜRÜST değerlendirme raporu (sızıntılı in-sample vs OOS + null'lar)
 python -m scripts.run_validation
+
+# 3) Bilimsel ENTEGRİTE testleri (no-look-ahead, CV purge, ağırlık nötrlüğü)
+python tests/test_integrity.py          # ya da: python -m pytest tests/
 ```
+
+> Entegrite testleri kritiktir: bir kez `cross_sectional_weights`'te dolar-nötrlük bug'ı
+> yakalayıp düzeltti — düzeltme edge'i 0.95 eşiğinin üstüne taşıdı (bkz. sonuclar.md Stage 11).
 
 ## Mimari (modül haritası)
 Domain'lere ayrık, bağımlılığı tek yönlü paket yapısı — **tam harita + yeni modül nereye
