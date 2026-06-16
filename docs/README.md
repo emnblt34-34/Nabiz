@@ -59,6 +59,7 @@ Ham "backtest kârlı" **kanıt değildir.** Her sayı şu üçlüden geçmeden 
 ## Dokümanlar
 | Belge | İçerik |
 |---|---|
+| [**makale.md**](makale.md) | **📄 BİLİMSEL MAKALE taslağı (v1).** 8 aşamanın konsolide bulgusu: "borsa zayıf-koşullu-dayanıklı öngörülebilir; yüksek değil" + para-artefaktı metodolojisi. |
 | [strateji-arastirma.md](strateji-arastirma.md) | **Ana strateji.** 10 sinyal ailesi sentezi: taksonomi (strong/mixed/weak), tek-tahmin-motoru mimarisi, ufuk oyun kitapları, bilimsel metodoloji, modül planı, makale taslağı, 8-aşamalı yol haritası, riskler + uzman yorumu. |
 | [arastirma-bulgulari.md](arastirma-bulgulari.md) | 10 alanın derin araştırma + adversarial doğrulama detayı (referans, ~160 KB). |
 | [sonuclar.md](sonuclar.md) | **Bilimsel günlük.** Her aşamanın dürüst OOS ölçümü (Stage 0→4). |
