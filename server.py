@@ -29,6 +29,7 @@ from finsent.pipeline import run_once
 from finsent.config import TICKERS, HORIZON_BARS, PRICE_PERIOD_BACKTEST, PRICE_PERIOD_LIVE
 from finsent.collectors import (
     RSSNewsCollector, RedditCollector, StockTwitsCollector, KAPCollector, SampleCollector,
+    YFNewsCollector,
 )
 
 import os
@@ -53,7 +54,9 @@ _cs = {"model": None, "record": None, "ranking": [], "trained_at": 0, "error": N
 def _collectors():
     if USE_SAMPLE:
         return [SampleCollector()]
-    return [RSSNewsCollector(), RedditCollector(), StockTwitsCollector(), KAPCollector()]
+    # YFNews: hisse-bazlı haber (BIST dahil). StockTwits: ABD yorum. RSS/Reddit/KAP: ek.
+    return [YFNewsCollector(), RSSNewsCollector(), RedditCollector(),
+            StockTwitsCollector(), KAPCollector()]
 
 
 def _init_forecaster():

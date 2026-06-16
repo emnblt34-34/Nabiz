@@ -73,16 +73,18 @@ canlı isabet), `/api/backtest` (tam döküm).
 ## Duygu kaynakları (sentiment)
 Canlı yorum/haber toplanır; panelde her hisse momentum sinyalinin yanında **canlı duygu**
 (💬 skor + içerik sayısı) gösterir. Kaynak durumu (bu ortamda ölçülen):
-- **StockTwits** ✅ — ABD hisseleri iyi kapsanır (40–560 yorum/hisse).
-- **RSS haber** (bloomberght/dunya/ntv/investing/cnbc) — ağırlıkla makro; spesifik BIST
-  ticker'ını nadiren anar.
-- **Reddit** ⚠️ — yetkisiz `.json` 403 bloklu. BIST duygusu (r/borsa, r/BorsaIstanbul) için
-  **ücretsiz Reddit app** aç (reddit.com/prefs/apps → "script"), sonra ortam değişkenlerini ver:
-  `set REDDIT_CLIENT_ID=...` ve `set REDDIT_CLIENT_SECRET=...` → collector otomatik OAuth'a geçer.
-- **KAP** ❌ — kap.org.tr bu ortamdan ulaşılamadı (resmi BIST açıklamaları).
+- **yfinance haber** ✅ — **hisse-bazlı haber, BIST DAHİL** (her şirketin güncel başlıkları;
+  THYAO/GARAN/AKBNK/TUPRS/SISE haberleri geliyor). BIST açığını büyük ölçüde kapatan ana kaynak.
+- **StockTwits** ✅ — ABD hisseleri için yatırımcı yorumları (40–560 yorum/hisse, ABD-only).
+- **RSS haber** (bloomberght/dunya/ntv/investing/cnbc) — ağırlıkla makro; ticker'ı nadiren anar.
+- **Reddit** ⚠️ — yetkisiz `.json` 403 bloklu. Ek BIST forum duygusu için **ücretsiz Reddit app**
+  aç (reddit.com/prefs/apps → "script") + `set REDDIT_CLIENT_ID=...` / `set REDDIT_CLIENT_SECRET=...`
+  → collector otomatik OAuth'a geçer (r/borsa, r/BorsaIstanbul).
+- **KAP** ❌ — kap.org.tr bu ortamdan ulaşılamadı. **Twitter/X** ❌ — API artık ücretli (~$100/ay);
+  canlı kazıma ToS-dışı/bloklu. StockTwits ücretsiz muadildir.
 
-> Dürüst durum: **ABD duygu zengin; BIST ticker-düzeyi duygu ücretsiz kaynaklardan zayıf**
-> (haber makro-odaklı, StockTwits ABD-only). BIST için Reddit OAuth en pratik yol.
+> Dürüst durum: **yfinance haber ile artık BIST de kapsanıyor** (ABD: StockTwits yorum + haber;
+> BIST: haber). Asıl bilimsel test (duygunun fiyat-ötesi katkısı) forward-only ölçülür.
 
 ## Ayarlar (server.py içinde)
 - `REFRESH_MIN` — kaç dakikada bir toplansın (varsayılan 10)
