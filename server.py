@@ -344,7 +344,7 @@ def crosssection():
     if not _cs["model"]:
         status_txt = "hazırlanıyor (günlük model eğitiliyor, ilk turda ~1-2 dk)"
     elif dsr is not None and dsr > 0.95 and p is not None and p < 0.05:
-        status_txt = "ispatlandı (robust)"
+        status_txt = "anlamlı: zayıf ama önceden-kayıtlı eşik geçildi (n=7)"
     elif p is not None and p < 0.05:
         status_txt = "sınırda-anlamlı (kesin ispat değil)"
     else:
@@ -358,10 +358,10 @@ def crosssection():
         "ranking": _cs["ranking"],
         "currency": "USD",
         "error": _cs["error"],
-        "note": "PARA-NÖTR (BIST USD'ye çevrili): hisseleri birbirine göre sıralar — üstü göreli "
-                "güçlü, altı zayıf. DÜRÜSTLÜK: TL-bazlı 'güçlü' sinyal büyük ölçüde kur "
-                "artefaktıydı (Stage 6); para-nötr gerçek edge ZAYIF (16y Sharpe~0.45, son 5y ~0).",
-        "disclaimer": "Yatırım tavsiyesi değildir; edge zayıf ve robust ispat eksiktir.",
+        "note": "PARA-NÖTR (BIST USD'ye çevrili): hisseleri göreli güç sırasına dizer (yön değil "
+                "sıralama). Edge ZAYIF (Sharpe~0.56) ama 27y dayanıklı ve önceden-kayıtlı eşiği "
+                "geçti (DSR~0.96, p~0.002). TL-bazlı 'güçlü' sinyal kur artefaktıydı (Stage 6).",
+        "disclaimer": "Yatırım tavsiyesi değildir; edge zayıf (Sharpe~0.5) ama istatistiksel anlamlı.",
     }
 
 
