@@ -24,6 +24,7 @@ from fastapi.responses import HTMLResponse
 
 from finsent import db, prices, forecast, fx
 from finsent.portfolio import cross_section
+from finsent.signals import daytrade
 from finsent.evaluation import validation, benchmarks
 from finsent.pipeline import run_once
 from finsent.config import TICKERS, HORIZON_BARS, PRICE_PERIOD_BACKTEST, PRICE_PERIOD_LIVE
@@ -90,6 +91,8 @@ def _forecast_cycle():
         prices.update_prices(conn, list(TICKERS), period=PRICE_PERIOD_LIVE)
         # 30dk mum grafiği için taze gün-içi barlar (öngörü YOK — sadece görsel durum; Stage 13).
         prices.update_prices(conn, list(TICKERS), period="5d", interval="30m")
+        # 15dk: gün-içi RVOL & R:R Tier modülü için (Stage 16). 1mo ≈ 20-gün RVOL penceresi.
+        prices.update_prices(conn, list(TICKERS), period="1mo", interval="15m")
         forecast.resolve_due(conn)
         preds = forecast.forecast_all(conn, _fc["model"], list(TICKERS))
         forecast.log_predictions(conn, preds, HORIZON_BARS)
@@ -419,24 +422,42 @@ def _projection(symbol: str, tf: str, candles: list[dict]) -> dict | None:
         # dürüst "edge yok" etiketi. (bkz. run_30m_research.py, docs/sonuclar.md Stage 13)
         return {"direction": "neutral", "drift_pct": 0.0,
                 "band_pct": round(vol * 100, 2), "horizon_bars": 1, "label": "~30 dk",
+                "reads": [{"label": "30 dk", "drift_pct": 0.0,
+                           "band_pct": round(vol * 100, 2), "horizon_bars": 1}],
                 "strength": "ölçüldü: edge yok (≈yazı-tura, OOS-IC≈0, p≈0.60)", "signal": 0.0}
+    # ÇİFT UFUK: kısa (etiketin söylediği 1-birim) + uzun (yanında). Birim = bu tf'nin bar'ı:
+    #   saatlik → 1 saat + 3 saat;  günlük → sadece 1 gün;  haftalık → 1 hafta + aylık(4 hafta).
     if tf == "hourly":
         item = next((p for p in _fc["latest"] if p["ticker"] == symbol), None)
         sig = item["signal"] if item else 0.0
-        horizon, label, strength = 3, "~3 saat", "çok zayıf (≈yazı-tura)"
-    else:
+        horizons = [(1, "1 saat"), (3, "3 saat")]
+        strength = "çok zayıf (≈yazı-tura)"
+    elif tf == "daily":
         item = next((it for it in _cs["ranking"] if it["ticker"] == symbol), None)
         sig = item["signal"] if item else 0.0
-        horizon = 5 if tf == "daily" else 4
-        label = "~5 gün" if tf == "daily" else "~4 hafta"
+        horizons = [(1, "1 gün")]
         strength = "orta (kesitsel/göreli)"
-    drift_pct = max(-1.0, min(1.0, sig)) * vol * (horizon ** 0.5) * 100
-    band_pct = vol * (horizon ** 0.5) * 100
+    else:  # weekly: 1 hafta + aylık (≈4 hafta)
+        item = next((it for it in _cs["ranking"] if it["ticker"] == symbol), None)
+        sig = item["signal"] if item else 0.0
+        horizons = [(1, "1 hafta"), (4, "aylık")]
+        strength = "orta (kesitsel/göreli)"
+    csig = max(-1.0, min(1.0, sig))
+
+    def _at(h):
+        return round(csig * vol * (h ** 0.5) * 100, 2), round(vol * (h ** 0.5) * 100, 2)
+
+    reads = []
+    for h, lb in horizons:
+        d, b = _at(h)
+        reads.append({"label": lb, "drift_pct": d, "band_pct": b, "horizon_bars": h})
+    cone = reads[-1]  # koni + senaryo mumları EN UZUN ufka çizilir; etiket her iki ufku da yazar
+    drift_pct, band_pct, horizon = cone["drift_pct"], cone["band_pct"], cone["horizon_bars"]
     direction = ("up" if drift_pct > band_pct * 0.12 else
                  "down" if drift_pct < -band_pct * 0.12 else "neutral")
-    return {"direction": direction, "drift_pct": round(drift_pct, 2),
-            "band_pct": round(band_pct, 2), "horizon_bars": horizon,
-            "label": label, "strength": strength, "signal": round(sig, 3)}
+    return {"direction": direction, "drift_pct": drift_pct, "band_pct": band_pct,
+            "horizon_bars": horizon, "label": cone["label"], "reads": reads,
+            "strength": strength, "signal": round(sig, 3)}
 
 
 @app.get("/api/candles/{symbol}")
@@ -459,6 +480,19 @@ def candles_api(symbol: str, tf: str = "daily"):
             "last_bar": cs[-1]["t"] if cs else None,
             "note": "Sağdaki kesikli mumlar + koni = model SENARYOSU (yön eğilimi + √t belirsizlik). "
                     "Gerçek gelecek mum DEĞİL — olasılık görselleştirmesi."}
+
+
+@app.get("/api/daytrade")
+def daytrade_api():
+    """Gün-içi RVOL & R:R Tier sistemi (Stage 16). YÖN ÖNGÖRMEZ — risk/ödül + hacim sıralaması.
+    15dk seviye+RVOL, 1s trend teyidi. RVOL<1.5 elenir; kalanlar R:R'a göre 4 Tier'e ayrılır."""
+    conn = db.connect()
+    res = daytrade.compute_tiers(conn, list(TICKERS))
+    conn.close()
+    res["disclaimer"] = ("YÖN ÖNGÖRMEZ (Stage 13: gün-içi yön ≈ yazı-tura). Yüksek R:R = yüksek "
+                         "kazanma olasılığı DEĞİL; tanımlı-riskli kurulumların hacim+geometri "
+                         "sıralaması. Seviyeler ATR+swing (teknik); karar kullanıcının. Tavsiye değildir.")
+    return res
 
 
 @app.get("/api/ablation")

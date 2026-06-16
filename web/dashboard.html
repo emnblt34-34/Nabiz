@@ -92,6 +92,18 @@
   .toppick{margin:9px 0 3px;background:rgba(124,92,255,.10);border:1px solid rgba(124,92,255,.30);border-radius:12px;padding:10px 12px}
   .toppick .tp-h{font-size:12.5px;font-weight:700;margin-bottom:3px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
   .toppick ul{margin:5px 0 0;padding-left:16px} .toppick li{font-size:11px;color:var(--muted);line-height:1.55}
+  .dtwrap{margin-top:12px;background:linear-gradient(135deg,#1a1410,#241b14);border:1px solid rgba(255,180,84,.22);border-radius:16px;padding:14px 16px}
+  .dtwrap .h{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;margin-bottom:5px}
+  .dtier{margin-top:10px;border-left:3px solid var(--line);padding-left:10px}
+  .tg1{border-color:#ffd166}.tg2{border-color:#bfc4d0}.tg3{border-color:#d9a06b}.tg4{border-color:var(--amber)}
+  .dth{font-size:11.5px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:7px}
+  .dth .rng{font-size:9.5px;color:var(--faint);font-weight:500}
+  .dtrow{display:flex;flex-wrap:wrap;align-items:center;gap:7px;font-size:11.5px;padding:5px 0;border-bottom:1px solid var(--line)}
+  .dtrow .tk{font-weight:700}.dtrow .mk{font-size:9px;color:var(--faint)}
+  .dtrow .sd{font-weight:700;font-size:10.5px}.dtrow .rr b{color:var(--text)}
+  .dtrow .rv{color:var(--amber);font-size:10.5px}
+  .dtrow .bo{font-size:9px;color:var(--accent);background:rgba(124,92,255,.14);padding:1px 5px;border-radius:6px}
+  .dtrow .lv{flex-basis:100%;font-size:10.5px;color:var(--muted);font-family:ui-monospace,monospace}
   .cslist{margin-top:10px}
   .csrow{display:flex;align-items:center;gap:9px;padding:7px 0;border-top:1px solid var(--line);font-size:12.5px}
   .csrow .rk{color:var(--faint);font-size:10.5px;width:16px;text-align:right;font-family:ui-monospace,monospace}
@@ -127,6 +139,7 @@
     <div class="meta"><span><b id="mT">0</b> hisse</span><span><b id="mI">0</b> içerik</span><span id="mU">başlatılıyor…</span></div>
   </div>
   <div id="csx"></div>
+  <div id="daytrade"></div>
   <div id="fcsum"></div>
   <div class="controls">
     <div class="seg" id="seg"><button data-m="all" class="on">Tümü</button><button data-m="BIST">BIST</button><button data-m="US">ABD</button></div>
@@ -145,18 +158,19 @@ const pctf=v=>v==null?"–":Math.round(v*100)+"%";
 async function load(){
   $("ri").className="spin";
   try{
-    const [scores,st,dy,fc,cs]=await Promise.all([
+    const [scores,st,dy,fc,cs,dt]=await Promise.all([
       fetch("/api/scores?window=24h").then(r=>r.json()),
       fetch("/api/status").then(r=>r.json()),
       fetch("/api/daily").then(r=>r.json()),
       fetch("/api/forecast").then(r=>r.json()).catch(()=>null),
       fetch("/api/crosssection").then(r=>r.json()).catch(()=>null),
+      fetch("/api/daytrade").then(r=>r.json()).catch(()=>null),
     ]);
     SCORES=scores; $("daily").textContent=dy.text||"—";
     FC={meta:fc,items:{}}; if(fc&&fc.items) fc.items.forEach(i=>FC.items[i.ticker]=i);
     const t=st.last?new Date(st.last*1000).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"}):null;
     $("mU").textContent = st.running?"toplanıyor…":(t?("son: "+t):"ilk toplama sürüyor…");
-    renderCsx(cs); renderFcsum(); render();
+    renderCsx(cs); renderDaytrade(dt); renderFcsum(); render();
   }catch(e){
     $("list").innerHTML='<div class="state"><h3>Sunucuya ulaşılamadı</h3><p>server.py çalışıyor mu? Terminali kontrol et.</p></div>';
   }finally{$("ri").className="";}
@@ -227,6 +241,41 @@ function renderCsx(cs){
     ${tpHtml}
     <div class="cslist">${rows}</div>
     <div class="rec" style="margin-top:9px">${esc(cs.note||"")}</div>
+  </div>`;
+}
+
+function renderDaytrade(dt){
+  const box=$("daytrade");
+  if(!dt||!dt.tiers){box.innerHTML="";return;}
+  const T=dt.tiers, q=dt.qualified||0, sc=dt.scanned||0;
+  const meta={1:{e:'🥇',n:'SÜPER ELİT',c:'tg1',r:'R:R ≥ 3.0'},2:{e:'🥈',n:'ELİT',c:'tg2',r:'2.0–2.9'},
+              3:{e:'🥉',n:'STANDART',c:'tg3',r:'1.5–1.9'},4:{e:'🎗️',n:'TAKİP',c:'tg4',r:'1.0–1.4'}};
+  const sideC=s=>s==='up'?'var(--pos)':'var(--neg)', sideT=s=>s==='up'?'▲ LONG':'▼ SHORT';
+  const grpHtml=Object.keys(meta).map(k=>{
+    const items=T[k]||[];
+    if(!items.length) return '';
+    const rows=items.map(it=>`<div class="dtrow">
+      <span class="tk">${esc(it.ticker)}</span><span class="mk">${it.market}</span>
+      <span class="sd" style="color:${sideC(it.side)}">${sideT(it.side)}</span>
+      <span class="rr">R:R <b>${(+it.rr).toFixed(1)}</b></span>
+      <span class="rv" title="göreli hacim (anlık/20g aynı-slot ort.)">RVOL ${(+it.rvol).toFixed(1)}×</span>
+      ${it.breakout?'<span class="bo" title="tepe kırılımı — üstte yapısal direnç yok, hedef projeksiyon">kırılım</span>':''}
+      ${it.confirm_1h?'<span class="cf cf-hi" title="1 saatlik trend teyit ediyor">1s ✓</span>':''}
+      <div class="lv">Giriş <b>${it.entry}</b> · Stop <span style="color:var(--neg)">${it.stop}</span> · Hedef <span style="color:var(--pos)">${it.target}</span> · ATR ${it.atr_pct}%</div>
+    </div>`).join("");
+    return `<div class="dtier ${meta[k].c}"><div class="dth">${meta[k].e} Tier ${k} · ${meta[k].n} <span class="rng">${meta[k].r}</span></div>${rows}</div>`;
+  }).join("");
+  let empty='';
+  if(q===0){
+    const ld=(dt.rvol_leaders||[]).map(l=>`${esc(l.ticker)} <b style="color:var(--amber)">${(+l.rvol).toFixed(2)}×</b>`).join(' · ');
+    empty=`<div class="rec" style="margin-top:8px">Şu an RVOL≥1.5 + R:R≥1.0 geçen kurulum yok (${sc} tarandı). Piyasa ilgisi (hacim) + uygun geometri oluşunca dolar.</div>`
+      + (ld?`<div class="rec" style="margin-top:5px;color:var(--faint)">RVOL liderleri (en yakın adaylar): ${ld}</div>`:'');
+  }
+  box.innerHTML=`<div class="dtwrap">
+    <div class="h">⚡ Gün-içi Risk/Ödül · RVOL & Tier <span class="badge st-mid">${q}/${sc} nitelikli</span></div>
+    <div class="rec">15dk seviye + 1s trend teyidi · RVOL≥1.5 filtresi · R:R=(Hedef−Giriş)/(Giriş−Stop)</div>
+    ${grpHtml}${empty}
+    <div class="rec" style="margin-top:8px;color:var(--faint)">⚠️ ${esc(dt.disclaimer||'')}</div>
   </div>`;
 }
 
@@ -353,9 +402,10 @@ function drawCandles(sym,d){
     const ft=t=>{ if(!t)return '—'; const x=new Date(t); return isNaN(x)?'—':x.toLocaleString('tr-TR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); };
     const stamp=`<span style="color:var(--faint)">⌚ veri sonu: ${ft(d.last_bar)} · üretim: ${ft(d.as_of)}</span>`;
     if(proj){
-      const ar=proj.direction==='up'?'▲':proj.direction==='down'?'▼':'▬';
-      const dc=proj.direction==='up'?'var(--pos)':proj.direction==='down'?'var(--neg)':'var(--muted)';
-      lab.innerHTML=`Öngörü (${proj.label}): <b style="color:${dc}">${ar} ${proj.drift_pct>=0?'+':''}${proj.drift_pct}%</b> · belirsizlik ±${proj.band_pct}% · <span style="color:var(--faint)">${esc(proj.strength)}</span><br>${stamp}<br><span style="color:var(--faint)">${esc(d.note||'')}</span>`;
+      const arf=v=>v>0?'▲':v<0?'▼':'▬', dcf=v=>v>0?'var(--pos)':v<0?'var(--neg)':'var(--muted)';
+      const reads=(proj.reads&&proj.reads.length)?proj.reads:[{label:proj.label,drift_pct:proj.drift_pct,band_pct:proj.band_pct}];
+      const rtxt=reads.map(r=>`${esc(r.label)}: <b style="color:${dcf(r.drift_pct)}">${arf(r.drift_pct)} ${r.drift_pct>=0?'+':''}${r.drift_pct}%</b> <span style="color:var(--faint)">(±${r.band_pct}%)</span>`).join(' · ');
+      lab.innerHTML=`Öngörü — ${rtxt} · <span style="color:var(--faint)">${esc(proj.strength)}</span><br>${stamp}<br><span style="color:var(--faint)">${esc(d.note||'')}</span>`;
     } else lab.innerHTML=`<span style="color:var(--faint)">Öngörü yok (model hazırlanıyor).</span><br>${stamp}`;
   }
 }

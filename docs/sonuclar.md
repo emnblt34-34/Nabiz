@@ -501,3 +501,26 @@ geçtiğinde 🎯 kutusunda işaretler.
 **Stage 12'nin 29-hisselik** sonucudur (değişmedi). Likit large-cap eklemek kesitsel genişliği artırır
 (Stage 12 dersi: geniş kesit edge'i güçlendirdi), yön garantisi vermez. Eklenenler post-hoc, pre-registered değil.
 
+
+## Stage 16 — Gün-içi RVOL & R:R Tier sistemi: ÖNGÖRÜ DEĞİL, risk aracı (2026-06-16)
+
+**İstek:** 5/15dk + 1s bazlı, RVOL filtreli, R:R hesaplı, 4-Tier'li gün-içi trade derecelendirme modülü.
+
+**DÜRÜSTLÜK ÇATIŞMASI ve ÇÖZÜM:** Tam bu ölçek (gün-içi yön) Stage 13'te **yazı-tura** ölçüldü
+(OOS-IC≈0, p≈0.6). "Süper Elit sinyal" üreten bir ÖNGÖRÜ modülü yapmak kendi ölçümümüzle çelişirdi.
+Çözüm: modülü **yön öngören** değil, **risk/ödül + hacim KARAKTERİZASYONU** olarak kurduk. Bileşenlerin
+hepsi gerçek/hesaplanabilir; sadece "kazandırır" iddiası YOK.
+
+**MODÜL (`finsent/signals/daytrade.py`, `/api/daytrade`):**
+- **RVOL** (kural 2): anlık 15dk hacmi / aynı saat-diliminin ~20-gün ortalaması. **RVOL<1.5 → elenir**
+  (piyasa ilgisi yoksa raporlanmaz).
+- **Seviyeler**: 15dk ATR(14) + swing (giriş=son kapanış, stop=swing-low veya −1.5·ATR, hedef=yapısal
+  direnç; tepe kırılımında "açık hedef" işareti). 1s trend yön (side) + teyit.
+- **R:R** (kural 3): (Hedef−Giriş)/(Giriş−Stop). **Tier** (kural 4): ≥3 🥇 | 2–2.9 🥈 | 1.5–1.9 🥉 |
+  1.0–1.4 🎗️. R:R<1.0 raporlama dışı.
+- Arayüzde 4-tier panel; her satırda yön/R:R/RVOL/giriş-stop-hedef/ATR + kırılım & 1s-teyit rozetleri.
+
+**KRİTİK UYARI (panelde de):** Yüksek R:R = yüksek KAZANMA olasılığı **DEĞİL** (genelde tersi — hedef
+uzak). Yön öngörülmez. Bu, tanımlı-riskli kurulumların hacim+geometri sıralamasıdır; karar kullanıcının.
+Ölçtüğümüz tek gerçek edge hâlâ günlük/haftalık kesitsel momentum (Stage 12/15); gün-içi ≈yazı-tura.
+
