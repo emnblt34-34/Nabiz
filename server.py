@@ -22,7 +22,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 
-from finsent import db, prices, forecast
+from finsent import db, prices, forecast, fx
 from finsent.portfolio import cross_section
 from finsent.pipeline import run_once
 from finsent.config import TICKERS, HORIZON_BARS, PRICE_PERIOD_BACKTEST, PRICE_PERIOD_LIVE
@@ -38,7 +38,7 @@ REFRESH_MIN = 10          # kaç dakikada bir veri toplansın
 USE_SAMPLE = os.environ.get("NABIZ_SAMPLE") == "1"
 PORT = int(os.environ.get("NABIZ_PORT", "8000"))
 RETRAIN_SEC = 6 * 3600    # modeli kaç saniyede bir yeniden eğit (taze barlarla)
-CS_PERIOD = "5y"          # kesitsel model için günlük geçmiş (doğrulanmış temiz pencere)
+CS_PERIOD = "max"         # kesitsel model: USD-bazlı uzun geçmiş (enflasyon-nötr; bkz. Stage 6)
 
 app = FastAPI(title="Nabız")
 _state = {"last": 0, "running": False, "stats": None, "error": None}
@@ -87,9 +87,10 @@ def _forecast_cycle():
 
 
 def _init_cs():
-    """Bir kez (ve 6 saatte bir): günlük geçmişi çek, KESİTSEL modeli eğit + market-nötr backtest."""
+    """Bir kez (ve 6 saatte bir): USDTRY + günlük geçmişi çek, USD-bazlı KESİTSEL modeli eğit."""
     try:
         conn = db.connect()
+        fx.update_fx(conn, period=CS_PERIOD, interval="1d")
         prices.update_prices(conn, list(TICKERS), period=CS_PERIOD, interval="1d")
         fc, rec = cross_section.train(conn, list(TICKERS))
         _cs.update({"model": fc, "record": rec, "trained_at": time.time(), "error": None})
@@ -346,10 +347,12 @@ def crosssection():
         "record": rec,
         "status": status_txt,
         "ranking": _cs["ranking"],
+        "currency": "USD",
         "error": _cs["error"],
-        "note": "Hisseleri BİRBİRİNE GÖRE sıralar (market-nötr long-short): üstü göreli güçlü, "
-                "altı göreli zayıf. Tek-hisse mutlak yönü DEĞİL. Saatlik rozetten farklı ve güçlü.",
-        "disclaimer": "Backtest sicili sınırda-anlamlı; yatırım tavsiyesi değildir.",
+        "note": "PARA-NÖTR (BIST USD'ye çevrili): hisseleri birbirine göre sıralar — üstü göreli "
+                "güçlü, altı zayıf. DÜRÜSTLÜK: TL-bazlı 'güçlü' sinyal büyük ölçüde kur "
+                "artefaktıydı (Stage 6); para-nötr gerçek edge ZAYIF (16y Sharpe~0.45, son 5y ~0).",
+        "disclaimer": "Yatırım tavsiyesi değildir; edge zayıf ve robust ispat eksiktir.",
     }
 
 

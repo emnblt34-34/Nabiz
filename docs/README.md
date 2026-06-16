@@ -48,7 +48,13 @@ Ham "backtest kârlı" **kanıt değildir.** Her sayı şu üçlüden geçmeden 
   protokol ([on-kayit-protokol.md](on-kayit-protokol.md)) + şeffaf DSR grid: tek-ufuk edge **bootstrap p=0.0055 ✓**,
   ama **DSR(n_trials=7)=0.912 ✗** (n=3'te 0.970). **Karar: güçlü ama robust ispat kıl payı eksik — "ispatlandı"
   DEMİYORUZ** (n_trials cherry-pick = p-hacking, yapmıyoruz).
-- Çalışan ürün: gerçek-zamanlı duygu + saatlik fiyat + öngörü paneli — `server.py`.
+- **Stage 5-6 — KRİTİK DÜRÜSTLÜK DÜZELTMESİ.** Kripto/uzun-geçmiş eşiği geçmedi; ve **Stage 6
+  ANA bulgu: yukarıdaki "DSR 0.912" büyük ölçüde TRY ENFLASYONU ARTEFAKTIYDI.** BIST USD'ye
+  çevrilince (para-nötr) 5y edge YOK OLUYOR (Sharpe 1.14→0.00, p→0.50). Gerçek para-nötr edge
+  ZAYIF: yalnız 16y'de marjinal anlamlı (Sharpe 0.45, p=0.006), son 5y'de yok. Titiz denomine
+  **kendi artefaktımızı yakaladı** → projeyi daha güvenilir yapar. [sonuclar.md](sonuclar.md).
+- Çalışan ürün: duygu paneli + **USD-bazlı kesitsel öngörü** (para-nötr, dürüst zayıf sicil) +
+  saatlik rozet (gürültü) — `server.py`.
 
 ## Dokümanlar
 | Belge | İçerik |
@@ -67,9 +73,10 @@ Tam liste: [strateji-arastirma.md › Yol Haritası](strateji-arastirma.md). Öz
 - **Stage 1 + Kesitsel L/S** ✅ `evaluation/stats.py` + `portfolio/weights.py` + `portfolio/ls_backtest.py`. Market-nötr hasat: Sharpe 0.78, p=0.032, DSR=0.51.
 - **Stage 3 — Rejim koşullama** ✅ `signals/regime.py` + trend-geçitli momentum. L/S DSR 0.51→0.79, Sharpe 1.14, p=0.0055.
 - **Stage 4 — Ufuk-ensemble + önceden-kayıt** ✅ Ensemble reddedildi (seyreltti). Şeffaf DSR: **p=0.0055 ✓, DSR(n=7)=0.912 ✗ → SINIRDA.** Protokol: [on-kayit-protokol.md](on-kayit-protokol.md).
-- **Stage 5 — Veri/araç genişletme** ✅ Her iki kaldıraç da **başarısız** (dürüst): `max` geçmiş veri felaketi (BIST TL enflasyonu); kripto seyreltti (Sharpe 1.14→0.87). Naif ölçekleme eşiği geçmedi. **En iyi konfig: hisse-only 5y rejim, DSR(7)=0.912 (sınırda).**
-- **Stage 6 — Daha iyi VERİ/SİNYAL** ⏭️ **SIRADAKİ.** Eşik artık "daha çok veri" değil: enflasyon-düzeltmeli/USD-BIST + temiz uzun geçmiş + winsorize; **duygu/LLM özellik ablation** (gerçek yeni bilgi); mid-price reversal.
-- **Sonraki:** meta-model/kalibrasyon, makale. (Tam liste + [strateji-arastirma.md](strateji-arastirma.md).)
+- **Stage 5 — Veri/araç genişletme** ✅ Kripto seyreltti, `max` TL veri felaketi → naif ölçekleme eşiği geçmedi.
+- **Stage 6 — USD-bazlı BIST** ✅ **ANA BULGU:** 5y "DSR 0.912" büyük ölçüde **TRY enflasyonu artefaktıydı**; para-nötr (USD) edge ZAYIF (16y Sharpe 0.45 / p=0.006; son 5y ~0). Titiz denomine kendi artefaktımızı yakaladı. Canlı panel USD'ye geçti.
+- **Stage 7 — Duygu/LLM ablation** ⏭️ **SIRADAKİ.** Para-nötr teknik+momentum yetmiyor (dürüstçe ölçüldü). Tek umut: haber/duygu/LLM'in fiyat-ötesi **marjinal** katkısı (forward-only ablation; bkz. [fikirler-dipnotlar.md](fikirler-dipnotlar.md) #1).
+- **Sonraki:** makale — mevcut dürüst sonuçlarla bile yayınlanabilir (zayıf öngörülebilirlik + artefakt-yakalama metodolojisi). (Tam liste + [strateji-arastirma.md](strateji-arastirma.md).)
 - **Stage 3** — Rejim koşullama (`regime.py`: Hurst/ADX/vol).
 - **Stage 4** — Meta-model + kalibre confidence (Platt/isotonic, Brier).
 - **Stage 5** — Çok-ufuk (günlük/haftalık bar) + çapraz-kesit rank-momentum (`cross_section.py`).

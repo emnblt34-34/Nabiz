@@ -13,21 +13,24 @@ Bu, pooled (ticker×bar) IC'deki bağımsızlık-şişmesini de doğal olarak ç
 """
 from __future__ import annotations
 
-from .. import db, features, forecast
+from .. import db, features, forecast, fx
 from ..evaluation import validation
 from ..config import PRICE_INTERVAL, HORIZON_BARS, TICKER_MARKET
 from . import weights
 
 
-def _records(conn, ticker: str, horizon: int, interval: str) -> list[dict]:
-    """Bir ticker için (date, feat, fwd, vol) kayıtları — no-look-ahead."""
-    rows = db.get_prices(conn, ticker, interval)
-    closes: list[float] = []
-    dates: list[str] = []
-    for r in rows:
-        if r["close"] is not None:
-            closes.append(float(r["close"]))
-            dates.append(r["ts"][:10])
+def _records(conn, ticker: str, horizon: int, interval: str, usd: bool = False) -> list[dict]:
+    """Bir ticker için (date, feat, fwd, vol) kayıtları — no-look-ahead.
+    usd=True: BIST USD'ye çevrilir (TL enflasyonu çıkar, ortak para birimi)."""
+    if usd:
+        closes, dates = fx.usd_series(conn, ticker, interval)
+    else:
+        rows = db.get_prices(conn, ticker, interval)
+        closes, dates = [], []
+        for r in rows:
+            if r["close"] is not None:
+                closes.append(float(r["close"]))
+                dates.append(r["ts"][:10])
     recs = []
     for i in range(features.MIN_BARS - 1, len(closes)):
         pf = features.price_features(closes, i)
@@ -43,14 +46,16 @@ def _records(conn, ticker: str, horizon: int, interval: str) -> list[dict]:
 
 def cross_sectional_walk_forward(conn, tickers, horizon: int = HORIZON_BARS,
                                  interval: str = PRICE_INTERVAL, n_splits: int = 5,
-                                 embargo: int = 1, prefer_ml: bool = True) -> dict:
+                                 embargo: int = 1, prefer_ml: bool = True,
+                                 usd: bool = False) -> dict:
     """
     Kesitsel L/S walk-forward. Dönüş: {ls_returns, bench_returns (1/N-rank), n_rebalances, ...}.
     Her rebalansta: model(geçmiş) → sinyaller → kesitsel ağırlık → portföy forward getirisi.
+    usd=True: BIST USD'ye çevrilir (enflasyon-nötr + ortak para birimi).
     """
     all_recs: list[tuple] = []
     for t in tickers:
-        for r in _records(conn, t, horizon, interval):
+        for r in _records(conn, t, horizon, interval, usd=usd):
             all_recs.append((t, r))
     if not all_recs:
         return {"ls_returns": [], "bench_returns": [], "n_rebalances": 0, "horizon": horizon}

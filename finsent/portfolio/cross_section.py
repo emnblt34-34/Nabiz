@@ -10,7 +10,7 @@ arayüzde DÜRÜSTÇE gösterilir — "kesin ispat değil" diye. (bkz. docs/sonu
 """
 from __future__ import annotations
 
-from .. import prices, features, forecast
+from .. import prices, features, forecast, fx
 from ..config import TICKER_MARKET
 from ..evaluation import stats
 from . import weights, ls_backtest
@@ -19,15 +19,18 @@ CS_HORIZON = 5          # gün (ufuk)
 CS_INTERVAL = "1d"
 
 
-def train(conn, tickers, interval: str = CS_INTERVAL, horizon: int = CS_HORIZON):
+def train(conn, tickers, interval: str = CS_INTERVAL, horizon: int = CS_HORIZON,
+          usd: bool = True):
     """
     Günlük geçmişten kesitsel modeli eğitir + market-nötr L/S backtest sicilini ölçer.
+    usd=True (varsayılan): BIST USD'ye çevrilir — TL enflasyonu artefaktını çıkarır
+    (Stage 6 dersi: TL-bazlı "güçlü" sinyal büyük ölçüde kur artefaktıydı).
     Dönüş: (forecaster, record). Veri yetmezse (None, None).
     """
     X: list[dict] = []
     y: list[float] = []
     for t in tickers:
-        for r in ls_backtest._records(conn, t, horizon, interval):
+        for r in ls_backtest._records(conn, t, horizon, interval, usd=usd):
             X.append(r["feat"])
             y.append(r["fwd"])
     if len(X) < 100:
@@ -35,7 +38,7 @@ def train(conn, tickers, interval: str = CS_INTERVAL, horizon: int = CS_HORIZON)
     fc, _ = forecast.fit_from_data(X, y, prefer_ml=True)
 
     bt = ls_backtest.cross_sectional_walk_forward(
-        conn, list(tickers), horizon=horizon, interval=interval, n_splits=5)
+        conn, list(tickers), horizon=horizon, interval=interval, n_splits=5, usd=usd)
     rets = bt["ls_returns"]
     ppy = 252 / horizon
     sr = stats.sharpe(rets, ppy) if rets else None
@@ -49,16 +52,17 @@ def train(conn, tickers, interval: str = CS_INTERVAL, horizon: int = CS_HORIZON)
     return fc, record
 
 
-def rank_now(conn, fc, tickers, interval: str = CS_INTERVAL) -> list[dict]:
+def rank_now(conn, fc, tickers, interval: str = CS_INTERVAL, usd: bool = True) -> list[dict]:
     """
     Şu anki kesitsel sıralama: her hissenin son özelliğiyle model sinyali → kesitsel
     dolar-nötr ağırlık → sıralı liste (en güçlü → en zayıf), yön + rejim etiketiyle.
+    usd=True: BIST USD'ye çevrilir (para-nötr, eğitimle tutarlı).
     """
     sigs: dict[str, float] = {}
     vols: dict[str, float] = {}
     feats: dict[str, dict] = {}
     for t in tickers:
-        c = prices.closes(conn, t, interval)
+        c = fx.usd_series(conn, t, interval)[0] if usd else prices.closes(conn, t, interval)
         if len(c) < features.MIN_BARS:
             continue
         feat = features.price_features(c, len(c) - 1)

@@ -226,3 +226,39 @@ gerektiriyor. Eklenen kripto/altyapı kodu gelecekteki temiz denemeler için dur
 
 **Kazanım:** Naif ölçeklemenin neden çalışmadığını ÖLÇEREK öğrendik — bu da gerçek bilim.
 
+---
+
+## Stage 6 — USD-bazlı BIST: KENDİ ARTEFAKTIMIZI YAKALADIK (2026-06-15)
+
+**Ne yapıldı:** `fx.py` (USDTRY çek) + BIST kapanışını USD'ye çevir (TL enflasyonunu
+sinyalden çıkar; ayrıca karışık BIST-TL/ABD-USD kesitini ortak para birimine getir).
+`ls_backtest` + `cross_section`'a `usd` parametresi. TL vs USD aynı pencerede kıyaslandı.
+
+| Kesitsel L/S | Sharpe | bootstrap p | DSR(7) |
+|---|---|---|---|
+| TL-bazlı, 5y | **+1.14** | 0.0055 | **0.912** |
+| **USD-bazlı, 5y** | **−0.00** | **0.50** | **0.082** |
+| TL-bazlı, max (16y) | −0.18 💥 | 0.91 | 0.000 |
+| **USD-bazlı, max (16y)** | **+0.45** | **0.0065** | **0.865** |
+
+**ANA BULGU (başlığı revize eden):**
+- **Stage 1-4'teki "güçlü" 5y sinyalimiz (DSR 0.912) büyük ölçüde TRY ENFLASYONU
+  ARTEFAKTIYDI.** Karışık kesitte (BIST-TL + ABD-USD) TRY değer kaybedince BIST sistematik
+  "yükseliyor" görünüyor; momentum bunu yakalıyor, forward getiri de TRY düşüşünü içeriyor →
+  sahte "skill". **Para-nötr (USD) çevirince 5y edge YOK OLUYOR** (Sharpe 1.14→0.00, p→0.50).
+- **Gerçek (para-nötr) edge ZAYIF:** yalnızca 16 yılda anlamlı (Sharpe 0.45, p=0.0065),
+  son 5 yılda **yok.** Momentumun bilinen "uzun-vadede zayıf" doğasıyla tutarlı.
+
+**Yapılan:** Canlı panel **USD-bazlı**a (para-nötr, max geçmiş) geçirildi — sahte sinyali
+"edge" diye göstermiyoruz. Sicil artık dürüst: Sharpe~0.45, DSR(7)~0.865, p~0.006 (16y).
+
+**Verdikt (en önemli dürüstlük anı):** Titiz metodoloji **kendi yanılgımızı yakaladı.** Eğer
+para birimine dikkat etmeseydik, "DSR 0.91, neredeyse-ispat" diye yanlış bir sonuç
+yayınlardık. Doğru denomine edince gerçek şu: **para-nötr kesitsel momentum öngörülebilirliği
+ZAYIF — uzun vadede marjinal anlamlı, yakın dönemde yok.** Bu, "borsa yüksek-oranda
+öngörülebilir" iddiasının aleyhine güçlü, dürüst bir kanıt — ve projeyi daha güvenilir yapar.
+
+**Sonraki:** Para-nötr zemin artık temiz. Eşiği geçmek için tek umut **gerçekten yeni bilgi**:
+duygu/haber/LLM katmanının fiyat-ötesi marjinal katkısı (forward-only ablation). Teknik+momentum
+tek başına yetmiyor — bunu dürüstçe ölçtük.
+
