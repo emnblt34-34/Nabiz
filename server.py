@@ -371,6 +371,76 @@ def crosssection():
     }
 
 
+def _resample_weekly(candles: list[dict]) -> list[dict]:
+    """Günlük mumları ISO-haftaya indir (OHLC: ilk açılış, max yüksek, min düşük, son kapanış)."""
+    import datetime
+    buckets: dict = {}
+    order: list = []
+    for c in candles:
+        try:
+            y, w, _ = datetime.date.fromisoformat(c["t"][:10]).isocalendar()
+        except Exception:
+            continue
+        key = (y, w)
+        if key not in buckets:
+            buckets[key] = {"t": c["t"], "o": c["o"], "h": c["h"], "l": c["l"], "c": c["c"]}
+            order.append(key)
+        else:
+            b = buckets[key]
+            if c["h"] is not None:
+                b["h"] = max(b["h"] or c["h"], c["h"])
+            if c["l"] is not None:
+                b["l"] = min(b["l"] or c["l"], c["l"])
+            b["c"] = c["c"]
+    return [buckets[k] for k in order]
+
+
+def _projection(symbol: str, tf: str, candles: list[dict]) -> dict | None:
+    """Model ÖNGÖRÜSÜ: yön eğilimi + belirsizlik bandı (gelecek mum DEĞİL — dürüst koni)."""
+    import statistics
+    closes = [c["c"] for c in candles if c.get("c") is not None]
+    if len(closes) < 6:
+        return None
+    rets = [(closes[i] - closes[i - 1]) / closes[i - 1]
+            for i in range(1, len(closes)) if closes[i - 1]]
+    vol = statistics.pstdev(rets[-20:]) if len(rets) >= 5 else 0.012
+    if tf == "hourly":
+        item = next((p for p in _fc["latest"] if p["ticker"] == symbol), None)
+        sig = item["signal"] if item else 0.0
+        horizon, label, strength = 3, "~3 saat", "çok zayıf (≈yazı-tura)"
+    else:
+        item = next((it for it in _cs["ranking"] if it["ticker"] == symbol), None)
+        sig = item["signal"] if item else 0.0
+        horizon = 5 if tf == "daily" else 4
+        label = "~5 gün" if tf == "daily" else "~4 hafta"
+        strength = "orta (kesitsel/göreli)"
+    drift_pct = max(-1.0, min(1.0, sig)) * vol * (horizon ** 0.5) * 100
+    band_pct = vol * (horizon ** 0.5) * 100
+    direction = ("up" if drift_pct > band_pct * 0.12 else
+                 "down" if drift_pct < -band_pct * 0.12 else "neutral")
+    return {"direction": direction, "drift_pct": round(drift_pct, 2),
+            "band_pct": round(band_pct, 2), "horizon_bars": horizon,
+            "label": label, "strength": strength, "signal": round(sig, 3)}
+
+
+@app.get("/api/candles/{symbol}")
+def candles_api(symbol: str, tf: str = "daily"):
+    """Mum verisi (OHLC) + dürüst öngörü projeksiyonu. tf: hourly|daily|weekly."""
+    symbol = symbol.upper()
+    interval = "60m" if tf == "hourly" else "1d"
+    limit = {"hourly": 70, "daily": 90, "weekly": 420}.get(tf, 90)
+    conn = db.connect()
+    rows = db.get_prices(conn, symbol, interval, limit=limit)
+    conn.close()
+    cs = [{"t": r["ts"], "o": r["open"], "h": r["high"], "l": r["low"], "c": r["close"]}
+          for r in rows if r["close"] is not None]
+    if tf == "weekly":
+        cs = _resample_weekly(cs)
+    cs = cs[-60:]
+    return {"symbol": symbol, "tf": tf, "candles": cs, "projection": _projection(symbol, tf, cs),
+            "note": "Sağdaki koni = model yön eğilimi + belirsizlik bandı (gelecek mum değil)."}
+
+
 @app.get("/api/ablation")
 def ablation():
     """(b) Forward sentiment ablation: duygu fiyat-ötesi öngörü katıyor mu? (zamanla birikir)."""

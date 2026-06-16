@@ -98,6 +98,14 @@
   .csrow .se{font-family:ui-monospace,monospace;font-size:11px;min-width:60px;text-align:right;font-variant-numeric:tabular-nums}
   .csrow .nw{font-size:10px;min-width:30px;text-align:right;color:var(--amber)}
   .csrow .rg{font-size:10px;color:var(--faint);margin-left:auto}
+  /* --- Mum grafiği --- */
+  .chart-wrap{margin:6px 0 13px}
+  .cftabs{display:flex;gap:6px;margin-bottom:8px}
+  .cftabs button{background:var(--surface2);border:1px solid var(--line);color:var(--muted);font:inherit;font-size:11.5px;font-weight:500;padding:5px 12px;border-radius:8px;cursor:pointer}
+  .cftabs button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .chart-wrap canvas{width:100%;height:180px;display:block;background:#0c0f16;border:1px solid var(--line);border-radius:10px}
+  .cflabel{font-size:11px;color:var(--muted);margin-top:7px;line-height:1.55}
+  .cflabel b{font-weight:600}
   .spin{animation:rot 1s linear infinite}@keyframes rot{to{transform:rotate(360deg)}}
 </style>
 </head>
@@ -250,7 +258,73 @@ function fbadge(sym){
 async function toggle(sym){
   const box=$("ev-"+sym);
   if(box.innerHTML){box.innerHTML="";return;}
-  box.innerHTML='<div class="evid" style="color:var(--faint);font-size:12px">Yorumlar ve haberler yükleniyor…</div>';
+  box.innerHTML = chartHTML(sym) +
+    `<div id="news-${sym}"><div class="evid" style="color:var(--faint);font-size:12px">Yorumlar ve haberler yükleniyor…</div></div>`;
+  loadChart(sym,'daily');
+  loadNews(sym);
+}
+
+function chartHTML(sym){
+  return `<div class="chart-wrap">
+    <div class="cftabs" id="cftabs-${sym}">
+      <button data-tf="hourly" onclick="loadChart('${sym}','hourly')">Saatlik</button>
+      <button data-tf="daily" class="on" onclick="loadChart('${sym}','daily')">Günlük</button>
+      <button data-tf="weekly" onclick="loadChart('${sym}','weekly')">Haftalık</button>
+    </div>
+    <canvas id="cv-${sym}"></canvas>
+    <div class="cflabel" id="cflabel-${sym}">Grafik yükleniyor…</div>
+  </div>`;
+}
+
+async function loadChart(sym,tf){
+  document.querySelectorAll(`#cftabs-${sym} button`).forEach(b=>b.classList.toggle('on',b.dataset.tf===tf));
+  try{ drawCandles(sym, await fetch(`/api/candles/${sym}?tf=${tf}`).then(r=>r.json())); }
+  catch(e){ const l=$('cflabel-'+sym); if(l)l.textContent='Grafik yüklenemedi.'; }
+}
+
+function drawCandles(sym,d){
+  const cv=$('cv-'+sym); if(!cv)return;
+  const dpr=window.devicePixelRatio||1, W=cv.clientWidth||320, H=180;
+  cv.width=W*dpr; cv.height=H*dpr;
+  const ctx=cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,W,H);
+  const cs=(d.candles||[]).filter(c=>c.c!=null), proj=d.projection, lab=$('cflabel-'+sym);
+  if(cs.length<2){ if(lab)lab.textContent='Yeterli veri yok.'; return; }
+  const last=cs[cs.length-1].c;
+  let lo=Infinity,hi=-Infinity;
+  cs.forEach(c=>{ if(c.l!=null)lo=Math.min(lo,c.l); if(c.h!=null)hi=Math.max(hi,c.h); });
+  if(proj){ hi=Math.max(hi,last*(1+(proj.drift_pct+proj.band_pct)/100)); lo=Math.min(lo,last*(1+(proj.drift_pct-proj.band_pct)/100)); }
+  const pd=(hi-lo)*0.08||1; hi+=pd; lo-=pd;
+  const pL=4,pR=4,pT=6,pB=6, plotW=W-pL-pR, plotH=H-pT-pB, histW=plotW*0.72, n=cs.length, cw=histW/n;
+  const yOf=v=>pT+(hi-v)/(hi-lo)*plotH, xOf=i=>pL+i*cw+cw/2;
+  cs.forEach((c,i)=>{ if(c.o==null)return;
+    const up=c.c>=c.o, k=up?'#36d399':'#ff5d73', x=xOf(i);
+    ctx.strokeStyle=k; ctx.fillStyle=k; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(x,yOf(c.h)); ctx.lineTo(x,yOf(c.l)); ctx.stroke();
+    const bw=Math.max(1.5,cw*0.6), y1=yOf(c.o), y2=yOf(c.c);
+    ctx.fillRect(x-bw/2,Math.min(y1,y2),bw,Math.max(1,Math.abs(y2-y1)));
+  });
+  const xLast=pL+histW;
+  ctx.strokeStyle='rgba(255,255,255,.14)'; ctx.setLineDash([3,3]);
+  ctx.beginPath(); ctx.moveTo(pL,yOf(last)); ctx.lineTo(W-pR,yOf(last)); ctx.stroke(); ctx.setLineDash([]);
+  if(proj){
+    const k=proj.direction==='up'?'#36d399':proj.direction==='down'?'#ff5d73':'#878d9e';
+    const x1=W-pR, cE=last*(1+proj.drift_pct/100), uE=last*(1+(proj.drift_pct+proj.band_pct)/100), lE=last*(1+(proj.drift_pct-proj.band_pct)/100);
+    ctx.fillStyle=k+'22';
+    ctx.beginPath(); ctx.moveTo(xLast,yOf(last)); ctx.lineTo(x1,yOf(uE)); ctx.lineTo(x1,yOf(lE)); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle=k; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(xLast,yOf(last)); ctx.lineTo(x1,yOf(cE)); ctx.stroke();
+  }
+  if(lab){
+    if(proj){
+      const ar=proj.direction==='up'?'▲':proj.direction==='down'?'▼':'▬';
+      const dc=proj.direction==='up'?'var(--pos)':proj.direction==='down'?'var(--neg)':'var(--muted)';
+      lab.innerHTML=`Öngörü (${proj.label}): <b style="color:${dc}">${ar} ${proj.drift_pct>=0?'+':''}${proj.drift_pct}%</b> · belirsizlik ±${proj.band_pct}% · <span style="color:var(--faint)">${esc(proj.strength)}</span><br><span style="color:var(--faint)">${esc(d.note||'')}</span>`;
+    } else lab.innerHTML='<span style="color:var(--faint)">Öngörü yok (model hazırlanıyor).</span>';
+  }
+}
+
+async function loadNews(sym){
+  const box=$('news-'+sym); if(!box)return;
   try{
     const d=await fetch("/api/ticker/"+sym).then(r=>r.json());
     const nMean=mean(d.news), sMean=mean(d.social);
