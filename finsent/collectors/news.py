@@ -10,7 +10,7 @@ sentiment'tan geçer, yüksek-skorlu olaylar panelde öne çıkar.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from .base import BaseCollector
 from ..models import Record, Author, SourceType
@@ -53,9 +53,11 @@ class YFNewsCollector(BaseCollector):
     """Her izlenen hisse için yfinance güncel haberleri (US + BIST)."""
     name = "yfnews"
 
-    def __init__(self, tickers: list[str] | None = None, limit: int = 10):
+    def __init__(self, tickers: list[str] | None = None, limit: int = 10,
+                 max_age_days: int = 21):
         self.tickers = tickers or list(TICKERS)
         self.limit = limit
+        self.max_age_days = max_age_days   # eski (bayat) haberi alma
 
     def collect(self) -> list[Record]:
         try:
@@ -65,6 +67,7 @@ class YFNewsCollector(BaseCollector):
             return []
         records: list[Record] = []
         seen: set[str] = set()
+        cutoff = datetime.now(timezone.utc) - timedelta(days=self.max_age_days)
         for t in self.tickers:
             sym = yf_symbol(t)
             try:
@@ -77,7 +80,7 @@ class YFNewsCollector(BaseCollector):
                 if not parsed:
                     continue
                 title, summary, publisher, url, created = parsed
-                if not title:
+                if not title or created < cutoff:   # boş/bayat haberi atla
                     continue
                 key = (url or title)[:120]
                 if key in seen:
