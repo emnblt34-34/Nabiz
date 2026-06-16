@@ -76,8 +76,9 @@ Tam liste: [strateji-arastirma.md › Yol Haritası](strateji-arastirma.md). Öz
 - **Stage 5 — Veri/araç genişletme** ✅ Kripto seyreltti, `max` TL veri felaketi → naif ölçekleme eşiği geçmedi.
 - **Stage 6 — USD-bazlı BIST** ✅ **ANA BULGU:** 5y "DSR 0.912" büyük ölçüde **TRY enflasyonu artefaktıydı**; para-nötr (USD) edge ZAYIF (16y Sharpe 0.45 / p=0.006; son 5y ~0). Titiz denomine kendi artefaktımızı yakaladı. Canlı panel USD'ye geçti.
 - **Stage 7 — Haber-etki kanalı (hacim proxy)** ✅ Gerçek sentiment backtest edilemez; ama hacim-olay proxy'si (dikkat/haber) **edge'i iyileştirdi: DSR(7) 0.865→0.935, p 0.0065→0.0020.** Haber/olay kanalı gerçek → duygu hipotezini destekler. Hâlâ <0.95 ama en yakın nokta.
-- **Stage 8 — Forward sentiment/LLM ablation** ⏭️ **SIRADAKİ.** Gerçek duygu/LLM (sürpriz/olay/nedensel-iletim, dip not #1) yalnız ileriye-dönük ölçülebilir (canlı `predictions` günlüğü). Harness kur, sonuç zamanla biriksin.
-- **Sonraki:** makale — mevcut dürüst sonuçlarla bile yayınlanabilir (zayıf öngörülebilirlik + artefakt-yakalama metodolojisi + haber-kanalı kanıtı). (Tam liste + [strateji-arastirma.md](strateji-arastirma.md).)
+- **Stage 8 — Dayanıklılık** ✅ DSR(7)=0.935 overfit mi? `evaluation/robustness.py`: **4/4 alt-dönem pozitif (27 yıl 1999-2026), bootstrap Sharpe p05=+0.26>0.** **STABİL — fluk değil.** Zayıf-ama-GERÇEK ve dayanıklı edge.
+- **Stage 9 — MAKALE** ⏭️ **SIRADAKİ.** Artık dürüst, dayanıklı, tekrarlanabilir bir bulgu var: "borsa zayıf-koşullu-ölçülebilir öngörülebilir; güçlü değil" + artefakt-yakalama metodolojisi + haber-kanalı kanıtı. Yazıma hazır.
+- **Paralel:** forward sentiment/LLM ablation (dip not #1) — edge'i 0.95 üstüne taşıma denemesi (ileriye-dönük ölçülür).
 - **Stage 3** — Rejim koşullama (`regime.py`: Hurst/ADX/vol).
 - **Stage 4** — Meta-model + kalibre confidence (Platt/isotonic, Brier).
 - **Stage 5** — Çok-ufuk (günlük/haftalık bar) + çapraz-kesit rank-momentum (`cross_section.py`).
