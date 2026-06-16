@@ -372,6 +372,9 @@ def crosssection():
         "ready": _cs["model"] is not None,
         "asof": _cs["trained_at"],
         "horizonDays": rec.get("horizon_days", 5),
+        "timeframe": "GÜNLÜK · 5 işlem günü ufku · göreli güç sıralaması (anlık/saatlik DEĞİL)",
+        "session_basis": "düzenli seans kapanışı (USD); ön-piyasa / sonrası / gece seansı HARİÇ",
+        "signal_meaning": "sinyal = göreli güç skoru (~-1..+1, yüzde değil); büyük + = göreli güçlü",
         "record": rec,
         "status": status_txt,
         "ranking": _cs["ranking"],
@@ -499,6 +502,9 @@ def dailycheck_api():
     conn.close()
     st["today_logged"] = [dict(r) for r in rows]
     st["today_count"] = len(rows)
+    st["session_basis"] = ("DÜZENLİ SEANS kapanışı (USD, yfinance 1g) ile yargılanır — ön-piyasa, "
+                           "sonrası ve gece seansı HARİÇ (onlar ince/gürültülü, hata payını artırır). "
+                           "Kripto (BTC) 7/24 → günlük kapanış UTC gün sınırıdır.")
     st["disclaimer"] = ("Yön çağrıları SAHADA ölçülür (geçmişe uydurulmaz). Tek-gün gürültülüdür; "
                         "tutarlılık günlerce birikince anlam kazanır. Model native ufku 5 gün (Stage 12); "
                         "burada 1-günlük tutarlılık + güven kalibrasyonu canlı izlenir.")

@@ -546,3 +546,25 @@ zamanda **Stage 14 kalibrasyonunun CANLI OOS testi**: yüksek güven gerçekten 
 **DÜRÜSTLÜK:** Tek-gün gürültülüdür; tutarlılık günlerce birikince anlam kazanır. Sahada ölçülür,
 geçmişe uydurulmaz. Model native ufku 5 gün; burada 1-günlük tutarlılık + kalibrasyon canlı izlenir.
 
+
+## Stage 18 — Seans/ufuk şeffaflığı + 1 coin (BTC) — hata payını detayla düşür (2026-06-16)
+
+**İstek:** (1) Öngörüleri hangi seansa göre yargılıyoruz (ön/sonrası/düzenli/gece)? Ayır. (2) Haber-
+takipli, öngörülebilir 1 coin ekle. (3) Kesitsel "+sinyal" anlık mı, saatlik mi, günlük mü? Detaylandır.
+
+**(1) SEANS TEMELİ — net beyan (hata payını düşüren tercih):** Tüm günlük/kesitsel/daily_check
+çözümleri **DÜZENLİ SEANS kapanışı** (USD, yfinance `1d`) ile yargılanır. Ön-piyasa, sonrası ve gece
+seansı **HARİÇ** — onlar ince/gürültülü, free güvenilir değil, dâhil etmek hatayı ARTIRIR. İntraday
+barlar (15/30/60dk) da yfinance varsayılanı = düzenli seans. Bunu "ayırmak" = tek güvenilir tabanı
+(düzenli kapanış) açıkça ilan edip gürültülüleri dışlamak. Arayüzde `session_basis` olarak gösterilir.
+
+**(2) BTC eklendi (canlı evren 41→42):** En haber-zengin + en likit coin. yf `BTC-USD`; `fx.usd_series`
+zaten USD kabul eder. **7/24 işler → SEANS YOK** (günlük kapanış = UTC gün sınırı; hisselerin düzenli-
+seans kapanışından farklı — daily_check'te belirtilir). Stage 5 dersi: kripto kesitsel edge'i
+seyreltebilir → eklendi ama izlenir (1 coin etkisi minimal). Mum/haber/daily_check/daytrade'e akar.
+
+**(3) KESİTSEL UFUK netleştirildi:** Panelde artık açıkça: *"GÜNLÜK · 5 işlem günü ufku · göreli güç
+sıralaması (anlık/saatlik DEĞİL)"* + *"sinyal = göreli güç skoru (~−1..+1, yüzde değil)"*. Yani
+kesitsel sinyal ANLIK panel rozeti veya saatlik tahmin değildir; 5-günlük göreli güç sıralamasıdır.
+Saatlik=forecaster (1s+3s), günlük/haftalık=kesitsel mum projeksiyonu — her biri etiketinde ufkuyla.
+

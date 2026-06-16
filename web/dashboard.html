@@ -239,6 +239,8 @@ function renderCsx(cs){
   </div>` : '';
   $("csx").innerHTML=`<div class="csx">
     <div class="h">📊 Kesitsel Öngörü <span class="badge ${stClass}">${esc(cs.status||'')}</span></div>
+    <div class="rec" style="color:var(--amber);margin-bottom:4px">⏱️ ${esc(cs.timeframe||'GÜNLÜK · 5 gün ufku')}</div>
+    <div class="rec" style="color:var(--faint);margin-bottom:6px">${esc(cs.signal_meaning||'')} · değerlendirme: ${esc(cs.session_basis||'')}</div>
     <div class="rec">${rec}</div>
     ${tpHtml}
     <div class="cslist">${rows}</div>
@@ -299,7 +301,8 @@ function renderDailycheck(dc){
     <div class="h">📋 Günlük Yön Takibi <span class="badge st-mid">bugün ${dc.today_count||today.length} çağrı</span></div>
     <div class="rec">Bugün loglandı: <b style="color:var(--pos)">▲ ${up}</b> · <b style="color:var(--neg)">▼ ${dn}</b> · <span style="color:var(--muted)">▬ ${nt} nötr</span> → yarın gerçekleşenle kıyaslanacak (sahada ölçüm, uydurma değil).</div>
     <div class="rec" style="margin-top:5px">${resLine}</div>
-    <div class="rec" style="margin-top:6px;color:var(--faint)">${esc(dc.disclaimer||'')}</div>
+    <div class="rec" style="margin-top:6px;color:var(--amber)">🕘 ${esc(dc.session_basis||'')}</div>
+    <div class="rec" style="margin-top:4px;color:var(--faint)">${esc(dc.disclaimer||'')}</div>
   </div>`;
 }
 
