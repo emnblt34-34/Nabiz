@@ -327,3 +327,33 @@ ve güçlü bir kanıt. **Dürüst başlık: "Borsa YÜKSEK oranda değil ama ZA
 **Sonraki:** Makale — artık dürüst, dayanıklı, tekrarlanabilir bir bulgu var; yazıma hazır.
 (+ forward sentiment/LLM ile edge'i 0.95 üstüne taşıma denemesi.)
 
+---
+
+## Stage 10 — 3-saatlik (intraday) öngörü: minik ama ölçülebilir kırıntı (2026-06-16)
+
+**İstek:** "3 saat sonrasını öngör." Stage 0'da bu ufuk (60d + taban özellikler) p=0.35
+(öngörü yok) çıkmıştı. Şimdi **2 yıl saatlik veri + momentum/rejim özellikleri** ile yeniden:
+
+| 3-saatlik (per-ticker OOS, 90.735 örnek) | Değer |
+|---|---|
+| OOS IC | +0.0068 |
+| Hit-rate | 50.3% (buy&hold 50.1%, geçiyor) |
+| Permütasyon p | **0.022 (<0.05)** |
+
+**SONUÇ (dürüst, iki yönlü):**
+1. ✅ Stage 0'daki p=0.35'ten p=0.022'ye — **daha çok veri + daha iyi özelliklerle, 3-saatlik
+   ufukta istatistiksel olarak sıfırdan ayırt edilebilir minik bir sinyal VAR.**
+2. ⚠️ AMA **ekonomik olarak ihmal edilebilir:** IC 0.007, hit %50.3 — neredeyse yazı-tura.
+   Üstelik 90k örnek bağımsız değil (otokorelasyon + 16 ticker ≈ 5 efektif) → permütasyon p
+   muhtemelen **abartılı**; blok-bootstrap/efektif-N ile anlamsızlaşabilir.
+
+**Canlı:** 3-saatlik forecast paneli artık **SIZINTISIZ OOS sicille** gösteriliyor (hit ~50.3%,
+p) — eskiden sızıntılı in-sample gösteriyordu. "çok zayıf" etiketi + "asıl edge günlük kesitsel"
+uyarısıyla dürüst çerçeve.
+
+**Verdikt:** "3 saat sonrasını öngörebiliyor muyuz?" → **Neredeyse hayır.** İstatistiksel bir
+kırıntı var ama ekonomik/güvenilir değil. Bu, ufuk-yapısının (term structure of predictability)
+beklenen sonucu: **kısa ufuk = en zayıf** (saatler mean-revert/gürültü), **günlük-aylık = gerçek
+edge** (momentum). Sistem 3-saatlik tahminini üretir ve siciliyle dürüstçe sunar; ama "güçlü
+3-saatlik öngörü" yoktur — ve bunu uydurmuyoruz.
+

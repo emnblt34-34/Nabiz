@@ -155,16 +155,17 @@ function renderFcsum(){
       <div class="row">Model hazırlanıyor… (fiyat geçmişi indiriliyor, ilk turda ~1 dk).</div></div>`;
     return;
   }
-  const bt=m.backtest||{}, lv=m.live||{};
+  const oos=m.oos||{}, lv=m.live||{};
+  const oosTxt = oos.hit!=null ? `<b>${pctf(oos.hit)}</b> <span style="color:var(--faint)">(OOS · p=${oos.p??'?'} · n=${oos.n||0})</span>` : '<b>—</b>';
   const liveTxt = lv.resolved ? `<b>${pctf(lv.hit_rate)}</b> (${lv.resolved} sonuçlandı)` : `<b>—</b> (${lv.open||0} bekliyor)`;
   $("fcsum").innerHTML=`<div class="fcsum">
-    <div class="h">🔮 Öngörü · gün içi (~${hz} saat)</div>
+    <div class="h">🔮 3-Saatlik Öngörü <span style="font-size:9.5px;padding:2px 8px;border-radius:7px;background:var(--surface2);color:var(--amber);font-weight:600">çok zayıf</span></div>
     <div class="row">
       <span>model: <b>${m.model||"—"}</b></span>
-      <span>geçmiş isabet: <b>${pctf(bt.hitRate)}</b> <span style="color:var(--faint)">(n=${bt.n||0})</span></span>
-      <span>canlı sicil: ${liveTxt}</span>
+      <span>3s isabet (dürüst OOS): ${oosTxt}</span>
+      <span>canlı: ${liveTxt}</span>
     </div>
-    <div class="note">${m.disclaimer||""}</div></div>`;
+    <div class="note">⚠️ 3-saatlik yön neredeyse yazı-tura (~%50, ekonomik olarak ihmal edilebilir); asıl ölçülen edge yukarıdaki <b>günlük kesitsel</b> panelde. ${m.disclaimer||""}</div></div>`;
 }
 
 function renderCsx(cs){

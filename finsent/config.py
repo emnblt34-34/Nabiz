@@ -87,7 +87,7 @@ YF_SUFFIX: dict[str, str] = {"BIST": ".IS", "US": "", "CRYPTO": "-USD"}
 
 PRICE_INTERVAL = "60m"          # saatlik bar (gün içi ufuk için yeterli çözünürlük)
 PRICE_PERIOD_LIVE = "5d"        # canlı özellikler için kısa geçmiş (hızlı tazeleme)
-PRICE_PERIOD_BACKTEST = "60d"   # model kalibrasyonu/backtest için uzun geçmiş
+PRICE_PERIOD_BACKTEST = "730d"  # saatlik model ~2y (3-saatlik minik edge ancak büyük örnekle görünür)
 HORIZON_BARS = 3                # kaç bar (≈ saat) ilerisi tahmin edilsin — "birkaç saat"
 
 # Sinyal kararsız (neutral) sayılma bandı: |signal| bunun altındaysa yön belirsiz.

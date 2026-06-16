@@ -24,6 +24,7 @@ from fastapi.responses import HTMLResponse
 
 from finsent import db, prices, forecast, fx
 from finsent.portfolio import cross_section
+from finsent.evaluation import validation, benchmarks
 from finsent.pipeline import run_once
 from finsent.config import TICKERS, HORIZON_BARS, PRICE_PERIOD_BACKTEST, PRICE_PERIOD_LIVE
 from finsent.collectors import (
@@ -42,8 +43,8 @@ CS_PERIOD = "max"         # kesitsel model: USD-bazlı uzun geçmiş (enflasyon-
 
 app = FastAPI(title="Nabız")
 _state = {"last": 0, "running": False, "stats": None, "error": None}
-# Saatlik öngörü durumu (zayıf/gürültü — Stage 0): model + backtest + son tahminler.
-_fc = {"model": None, "calibration": None, "backtest": None,
+# 3-saatlik öngörü durumu: model + backtest + DÜRÜST OOS sicil + son tahminler.
+_fc = {"model": None, "calibration": None, "backtest": None, "oos": None,
        "latest": [], "trained_at": 0, "error": None}
 # Kesitsel öngörü durumu (ASIL ölçülen sinyal): günlük rejim-koşullu momentum, market-nötr.
 _cs = {"model": None, "record": None, "ranking": [], "trained_at": 0, "error": None}
@@ -61,10 +62,17 @@ def _init_forecaster():
         conn = db.connect()
         prices.update_prices(conn, list(TICKERS), period=PRICE_PERIOD_BACKTEST)
         fc, cal, bt = forecast.train_forecaster(conn, list(TICKERS), HORIZON_BARS)
+        # DÜRÜST OOS (3-saatlik): sızıntısız walk-forward + permütasyon p (sızıntılı değil)
+        cv = validation.cross_validate(conn, list(TICKERS), HORIZON_BARS)
+        ov = cv.get("overall", {}) or {}
+        perm = benchmarks.permutation_pvalue(cv.get("oos_signals", []), cv.get("oos_labels", [])) \
+            if cv.get("oos_signals") else {}
         _fc.update({"model": fc, "calibration": cal, "backtest": bt,
+                    "oos": {"hit": ov.get("hit_rate"), "ic": ov.get("ic"),
+                            "n": ov.get("n"), "p": perm.get("p_value")},
                     "trained_at": time.time(), "error": None})
         conn.close()
-        print(f"[forecast] model hazir: {fc.name}, hit_rate={fc.hit_rate}")
+        print(f"[forecast] 3-saatlik OOS: hit={ov.get('hit_rate')} IC={ov.get('ic')} p={perm.get('p_value')}")
     except Exception as e:
         _fc["error"] = str(e)
         print("[forecast] init hata:", e)
@@ -265,6 +273,7 @@ def forecast_list():
             "hitRate": overall.get("hit_rate"), "ic": overall.get("ic"),
             "n": overall.get("n"), "nDirectional": overall.get("n_directional"),
         },
+        "oos": _fc.get("oos"),
         "live": live,
         "error": _fc["error"],
         "items": items,
