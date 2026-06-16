@@ -19,7 +19,7 @@ TICKERS: dict[str, list[str]] = {
     "SISE":  ["sise", "şişecam", "sisecam"],
     "KCHOL": ["kchol", "koç holding", "koc holding"],
     "EREGL": ["eregl", "ereğli", "erdemir"],
-    # --- US ---
+    # --- US (mega-tech çekirdek) ---
     "AAPL":  ["aapl", "apple"],
     "TSLA":  ["tsla", "tesla"],
     "NVDA":  ["nvda", "nvidia"],
@@ -27,6 +27,22 @@ TICKERS: dict[str, list[str]] = {
     "AMZN":  ["amzn", "amazon"],
     "META":  ["meta", "facebook"],
     "GOOGL": ["googl", "google", "alphabet"],
+    # --- US (likit + sektör-çeşitli genişleme; haber-zengin, günlük trade) ---
+    # NOT: kısa/ortak-kelime alias YOK ("v"/"cost"/"ko"/"dis" gibi false-match yapardı);
+    # yf:news zaten ticker'ı doğrudan atar (pipeline union eder).
+    "AMD":   ["amd", "advanced micro"],
+    "AVGO":  ["avgo", "broadcom"],
+    "NFLX":  ["nflx", "netflix"],
+    "PLTR":  ["pltr", "palantir"],
+    "JPM":   ["jpm", "jpmorgan", "jp morgan"],
+    "V":     ["visa"],
+    "XOM":   ["xom", "exxon"],
+    "UNH":   ["unh", "unitedhealth"],
+    "WMT":   ["wmt", "walmart"],
+    "COST":  ["costco"],
+    "KO":    ["coca cola", "coca-cola"],
+    "DIS":   ["disney"],
+    "UBER":  ["uber"],
 }
 
 # Borsa/bölge bağlamı — dil ve kaynak seçiminde kullanılır.
@@ -35,6 +51,8 @@ TICKER_MARKET: dict[str, str] = {
     "BIMAS": "BIST", "TUPRS": "BIST", "SISE": "BIST", "KCHOL": "BIST", "EREGL": "BIST",
     "AAPL": "US", "TSLA": "US", "NVDA": "US", "MSFT": "US",
     "AMZN": "US", "META": "US", "GOOGL": "US",
+    "AMD": "US", "AVGO": "US", "NFLX": "US", "PLTR": "US", "JPM": "US", "V": "US",
+    "XOM": "US", "UNH": "US", "WMT": "US", "COST": "US", "KO": "US", "DIS": "US", "UBER": "US",
 }
 
 # Kaynak türü bazında temel ağırlık. Haber sosyalden ağır çünkü daha az gürültülü.

@@ -38,7 +38,9 @@ def process(records: list[Record], analyzer=None) -> list[Record]:
     analyzer = analyzer or get_analyzer(prefer_transformer=False)
     out: list[Record] = []
     for r in records:
-        r.tickers = resolve_tickers(r.text)
+        # Collector ticker'ı önceden atadıysa (ör. yf:news) KORU; metinden çözülenlerle birleştir.
+        resolved = resolve_tickers(r.text)
+        r.tickers = sorted(set(r.tickers) | set(resolved)) if r.tickers else resolved
         if not r.tickers:
             continue  # hangi hisse olduğu belirsiz → çöp, atla
         r.lang = _detect_lang(r.text)

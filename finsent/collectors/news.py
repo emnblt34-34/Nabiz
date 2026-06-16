@@ -95,5 +95,6 @@ class YFNewsCollector(BaseCollector):
                     created_at=created,
                     author=Author(handle=publisher or "yfnews", source="yf:news", verified=True),
                     url=url or None,
+                    tickers=[t],   # bu hisse için çekildi → doğrudan ata (pipeline union eder)
                 ))
         return records
