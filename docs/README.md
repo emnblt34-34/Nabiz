@@ -67,8 +67,9 @@ Tam liste: [strateji-arastirma.md › Yol Haritası](strateji-arastirma.md). Öz
 - **Stage 1 + Kesitsel L/S** ✅ `evaluation/stats.py` + `portfolio/weights.py` + `portfolio/ls_backtest.py`. Market-nötr hasat: Sharpe 0.78, p=0.032, DSR=0.51.
 - **Stage 3 — Rejim koşullama** ✅ `signals/regime.py` + trend-geçitli momentum. L/S DSR 0.51→0.79, Sharpe 1.14, p=0.0055.
 - **Stage 4 — Ufuk-ensemble + önceden-kayıt** ✅ Ensemble reddedildi (seyreltti). Şeffaf DSR: **p=0.0055 ✓, DSR(n=7)=0.912 ✗ → SINIRDA.** Protokol: [on-kayit-protokol.md](on-kayit-protokol.md).
-- **Stage 5 — Veri/araç genişletme** ⏭️ **SIRADAKİ.** Daha uzun geçmiş + coin/yeni araç (n↑ → SR*↓) → DSR(n=7)>0.95'i muhafazakâr geçmek (kriter değiştirmeden).
-- **Sonraki:** duygu/LLM özellik ablation, meta-model/kalibrasyon, makale. (Tam liste + [strateji-arastirma.md](strateji-arastirma.md).)
+- **Stage 5 — Veri/araç genişletme** ✅ Her iki kaldıraç da **başarısız** (dürüst): `max` geçmiş veri felaketi (BIST TL enflasyonu); kripto seyreltti (Sharpe 1.14→0.87). Naif ölçekleme eşiği geçmedi. **En iyi konfig: hisse-only 5y rejim, DSR(7)=0.912 (sınırda).**
+- **Stage 6 — Daha iyi VERİ/SİNYAL** ⏭️ **SIRADAKİ.** Eşik artık "daha çok veri" değil: enflasyon-düzeltmeli/USD-BIST + temiz uzun geçmiş + winsorize; **duygu/LLM özellik ablation** (gerçek yeni bilgi); mid-price reversal.
+- **Sonraki:** meta-model/kalibrasyon, makale. (Tam liste + [strateji-arastirma.md](strateji-arastirma.md).)
 - **Stage 3** — Rejim koşullama (`regime.py`: Hurst/ADX/vol).
 - **Stage 4** — Meta-model + kalibre confidence (Platt/isotonic, Brier).
 - **Stage 5** — Çok-ufuk (günlük/haftalık bar) + çapraz-kesit rank-momentum (`cross_section.py`).

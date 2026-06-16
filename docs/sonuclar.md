@@ -197,3 +197,32 @@ sınırda-anlamlı, dürüstçe raporlanan bir edge.**
 **Eşiği muhafazakâr geçmek için (kriter değiştirmeden):** daha uzun geçmiş + daha fazla araç/coin
 (n↑ → SR*↓, Sharpe stabilize) → n_trials=7'de DSR>0.95. Ardından duygu/LLM ablation + makale.
 
+---
+
+## Stage 5 — Veri/araç genişletme: HER İKİ KALDIRAÇ DA BAŞARISIZ (2026-06-15)
+
+**Ne yapıldı:** Eşiği kriteri değiştirmeden geçmek için iki dürüst kaldıraç denendi:
+(a) daha uzun geçmiş (`max`), (b) kripto ekleyerek kesitsel genişlik (`config.science_universe`:
+16 hisse + 8 coin; `ls_backtest` hisse-takvimi hizalaması; canlı `TICKERS` bozulmadı).
+
+| 5y kesitsel L/S | Sharpe | bootstrap p | DSR(3) | **DSR(7)** | DSR(22) |
+|---|---|---|---|---|---|
+| Hisse-only (16) | **1.14** | 0.0055 | 0.970 | **0.912** | 0.789 |
+| Hisse + Kripto (24) | 0.87 | 0.031 | 0.899 | **0.769** | 0.569 |
+
+1. ❌ **`max` geçmiş: VERİ FELAKETİ** (Sharpe −0.18, yıllık −335%). Sebep: 16 yıllık BIST'te
+   **TL enflasyonu** (nominal fiyat 50x+ şişer) + kripto erken-dönem uç hareketleri → tek
+   glitch'li forward-return ağırlıkla çarpılınca patlıyor. **Ders: ölçüm DURAĞAN+TEMİZ pencere
+   ister; naif "daha çok geçmiş" çöp veri sokuyor. 5y doğrulanmış pencere.**
+2. ❌ **Kripto: SEYRELTTİ** (temiz 5y'de Sharpe 1.14→0.87, DSR(7) 0.912→0.769). Kripto'nun
+   kesitsel momentum yapısı hisse yapısıyla temiz örtüşmüyor; karıştırmak edge'i zayıflattı.
+3. **En iyi konfig DEĞİŞMEDİ: hisse-only, 5y, rejim-koşullu (Stage 3) — Sharpe 1.14, DSR(7)=0.912.**
+
+**Verdikt (dürüst):** Naif ölçeklendirme (daha çok geçmiş/araç) **eşiği geçmedi** ve nedenleri
+net. Edge'i **zorla geçirmiyoruz.** DSR(7)=0.912'de **sınırda kalıyoruz.** 0.95'i muhafazakâr
+geçmek artık "daha çok veri" değil, **daha iyi VERİ MÜHENDİSLİĞİ** (enflasyon-düzeltmeli/USD-BIST,
+temizlenmiş uzun geçmiş, winsorize) veya **gerçekten daha iyi sinyal** (duygu/LLM, mid-price)
+gerektiriyor. Eklenen kripto/altyapı kodu gelecekteki temiz denemeler için duruyor.
+
+**Kazanım:** Naif ölçeklemenin neden çalışmadığını ÖLÇEREK öğrendik — bu da gerçek bilim.
+

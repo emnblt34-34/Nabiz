@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from .. import db, features, forecast
 from ..evaluation import validation
-from ..config import PRICE_INTERVAL, HORIZON_BARS
+from ..config import PRICE_INTERVAL, HORIZON_BARS, TICKER_MARKET
 from . import weights
 
 
@@ -61,6 +61,14 @@ def cross_sectional_walk_forward(conn, tickers, horizon: int = HORIZON_BARS,
     for t, r in all_recs:
         by_date.setdefault(r["date"], []).append((t, r))
 
+    # Kripto evrende olabilir (7/24). Rebalans yalnız HİSSE işlem günlerinde olsun
+    # (hafta sonu sadece-kripto kesitini ve ufuk örtüşmesini önle).
+    eq_count: dict[str, int] = {}
+    for t, r in all_recs:
+        if TICKER_MARKET.get(t, "US") != "CRYPTO":
+            eq_count[r["date"]] = eq_count.get(r["date"], 0) + 1
+    has_equity = bool(eq_count)
+
     folds = validation.walk_forward_folds(len(dates), n_splits=n_splits,
                                           horizon=horizon, embargo=embargo, min_train=60)
     ls_returns: list[float] = []
@@ -74,8 +82,8 @@ def cross_sectional_walk_forward(conn, tickers, horizon: int = HORIZON_BARS,
             continue
         fc, _ = forecast.fit_from_data([a for a, _ in train], [b for _, b in train], prefer_ml)
         # Test penceresinde ÖRTÜŞMESİZ rebalans (her horizon tarihte bir)
-        for j in range(0, len(test_idx), horizon):
-            d = dates[test_idx[j]]
+        elig = [dates[k] for k in test_idx if (not has_equity or eq_count.get(dates[k], 0) >= 4)]
+        for d in elig[::horizon]:
             day = by_date.get(d, [])
             if len(day) < 4:  # kesit için minimum genişlik
                 continue

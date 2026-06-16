@@ -81,7 +81,7 @@ WINDOWS = {
 #
 # Fiyat verisi yfinance'ten gelir (ücretsiz). BIST sembolleri ".IS" eki ister
 # (THYAO -> THYAO.IS), US sembolleri eksiz çekilir.
-YF_SUFFIX: dict[str, str] = {"BIST": ".IS", "US": ""}
+YF_SUFFIX: dict[str, str] = {"BIST": ".IS", "US": "", "CRYPTO": "-USD"}
 
 PRICE_INTERVAL = "60m"          # saatlik bar (gün içi ufuk için yeterli çözünürlük)
 PRICE_PERIOD_LIVE = "5d"        # canlı özellikler için kısa geçmiş (hızlı tazeleme)
@@ -100,6 +100,32 @@ SENT_PRIORS: dict[str, float] = {
 
 
 def yf_symbol(ticker: str) -> str:
-    """Kanonik sembolü yfinance sembolüne çevirir (BIST -> .IS)."""
+    """Kanonik sembolü yfinance sembolüne çevirir (BIST -> .IS, CRYPTO -> -USD)."""
     market = TICKER_MARKET.get(ticker, "US")
     return ticker + YF_SUFFIX.get(market, "")
+
+
+# ---------------------------------------------------------------------------
+# Bilimsel universe genişlemesi — KRİPTO (yalnız araştırma/backtest)
+# ---------------------------------------------------------------------------
+# Coin'ler CANLI ürüne (TICKERS, panel, duygu hattı) EKLENMEZ — orası 16 hisse kalır.
+# Yalnız öngörülebilirlik çalışmasının EVRENİNİ genişletir (yfinance "BTC-USD").
+# Kripto = büyük ölçüde bağımsız 3. faktör bloğu → kesitsel genişlik + edge'in
+# bağımsız bir varlık sınıfında da görünmesi = en güçlü OOS doğrulama.
+CRYPTO_TICKERS: dict[str, list[str]] = {
+    "BTC":  ["btc", "bitcoin"],
+    "ETH":  ["eth", "ethereum"],
+    "SOL":  ["sol", "solana"],
+    "BNB":  ["bnb", "binance coin"],
+    "XRP":  ["xrp", "ripple"],
+    "ADA":  ["ada", "cardano"],
+    "DOGE": ["doge", "dogecoin"],
+    "AVAX": ["avax", "avalanche"],
+}
+for _c in CRYPTO_TICKERS:
+    TICKER_MARKET[_c] = "CRYPTO"
+
+
+def science_universe() -> list[str]:
+    """Öngörülebilirlik çalışmasının evreni: canlı hisseler + kripto (yalnız backtest)."""
+    return list(TICKERS) + list(CRYPTO_TICKERS)
