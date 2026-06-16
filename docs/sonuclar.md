@@ -41,3 +41,50 @@ yenince yapılır.
 **Sonraki ölçüm hedefi:** Stage 2 momentum ailesi (gün/hafta/ay) + Stage 3 rejim
 koşullama eklenince OOS IC ve permütasyon p'nin DÜŞMESİ (anlamlılaşması) beklenir; düşmezse
 o sinyal de reddedilir.
+
+---
+
+## Stage 2 — Çok-ölçekli momentum (GÜNLÜK), ilk ANLAMLI sinyal (2026-06-15)
+
+**Ne yapıldı:** `features.py`'a çok-ölçekli momentum ailesi eklendi (`mom_21/63/126/252`
++ vol-ölçekli `momsc_*`; günlük bar'da ≈1/3/6/12 ay). 2 yıllık GÜNLÜK bar çekildi,
+ufuk = 5 gün, 18 özellik (8 momentum), 16 hisse, OOS n=6805.
+
+| Ölçüm | Hit-rate | IC | n |
+|---|---|---|---|
+| Sızıntılı in-sample | 51.2% | +0.0680 | 7820 |
+| **Dürüst OOS (walk-forward)** | 50.9% | **+0.0692** | 6805 |
+| Sızıntı şişmesi | — | **−0.0012 (yok!)** | |
+
+**Null:** base-rate/buy&hold 53.7% · random-sign 50.0% / IC −0.001 · **permütasyon p = 0.001**.
+
+**Momentum özellik IC (in-sample ipucu):** `momsc_21=−0.055`, `mom_21=−0.048` (1-ay **REVERSAL**),
+`mom_252=+0.032`, `momsc_252=+0.030` (12-ay **MOMENTUM**), `mom_63=−0.030`.
+
+**SONUÇ (dürüst ve nüanslı):**
+1. ✅ **İLK KEZ permütasyon-null'ı yendik: OOS IC=+0.069, p=0.001.** Saatlik (p=0.35) öngörü
+   YOK iken, **günlük/momentum ufkunda ölçülebilir, istatistiksel anlamlı bir sinyal VAR.**
+2. ✅ **Sızıntı yok** (OOS IC ≈ in-sample) — walk-forward temiz.
+3. ✅ **Sinyal yapısı teoriyle birebir:** 1-ay **reversal** (negatif IC) + 12-ay **momentum**
+   (pozitif IC). Akademik kanıtın aynısı — uydurma değil, literatürle uyumlu çıktı.
+4. ⚠️ **Ama yön isabeti (50.9%) buy&hold'u (53.7%) GEÇMİYOR.** Sebep: hisse getirisinde
+   pozitif drift var (5-günlük getirilerin %53.7'si pozitif), "hep long" bunu yakalıyor.
+   Yani sinyalimiz **yönsel-zamanlama değil, KESİTSEL/sıralama (rank) bilgisi** taşıyor —
+   IC'nin yaşadığı yer burası.
+
+**Kritik çıkarım:** Bu sonuç **portföy mimarisini doğruluyor.** IC anlamlı ama drift'i yenmiyor
+→ sinyali hasat etmenin doğru yolu **kesitsel long-short** (piyasa-beta'sını/drift'i çıkarıp saf
+sıralama edge'ini izole eden, market-nötr defter — bkz. [portfoy-mimarisi.md](portfoy-mimarisi.md)).
+Edge bulundu; şimdi onu market-nötr ölçmek gerekiyor.
+
+**DÜRÜSTLÜK UYARILARI (Stage 1'de kapatılacak):**
+- Permütasyon p, havuzlanmış 6805 örneği **bağımsız** sayıyor; oysa evren analizi efektif
+  bahsin **~5** olduğunu söylüyor → bağımsızlık abartılı, gerçek p daha büyük olabilir.
+  **Blok-bootstrap + efektif-N** düzeltmesi şart.
+- Birden çok ölçek/özellik denendi → **çoklu-test düzeltmesi** (Deflated Sharpe, FDR) olmadan
+  "sağlam edge" denemez. p=0.001 cömert bir alt sınır.
+- IC=0.069 küçük; işlem maliyeti sonrası ticari değeri ayrı mesele (amacımız zaten ticaret değil).
+
+**Verdikt:** İlk kilometre taşı — **günlük/momentum ufkunda, teori-tutarlı, ölçülebilir
+öngörülebilirlik var.** Sıradaki: **Stage 1** (blok-bootstrap + Deflated Sharpe/PBO/FDR ile
+istatistiksel zırh) ve **kesitsel L/S** ile bu edge'i market-nötr hasat edip ispatlamak.

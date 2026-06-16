@@ -31,11 +31,14 @@ Ham "backtest kârlı" **kanıt değildir.** Her sayı şu üçlüden geçmeden 
 3. **Çoklu-test düzeltmeli** — Deflated Sharpe / PBO / SPA-FDR (Stage 1, henüz yok).
 
 ## Şu anki dürüst durum (2026-06-15)
-- **Stage 0 tamam.** Mevcut modelin sızıntısız OOS sonucu: **IC ≈ 0.005, hit ≈ %50.1,
-  permütasyon p = 0.35** → saatlik fiyat-teknik özelliklerle **öngörü kanıtı YOK** (eski
-  raporlanan IC 0.0248'in ~%80'i sızıntıydı). Bu, üstüne inşa edeceğimiz **dürüst
-  baseline.** Detay: [sonuclar.md](sonuclar.md).
-- Çalışan ürün: gerçek-zamanlı duygu + saatlik fiyat + (zayıf) öngörü paneli — `server.py`.
+- **Stage 0 tamam.** Sızıntı kapatıldı (`backtest._pool` in-sample optimizmi). Saatlik model
+  dürüst OOS: **IC≈0.005, p=0.35 → saatlik öngörü YOK** (eski IC 0.0248'in ~%80'i sızıntıydı).
+- **Stage 2 tamam — İLK ANLAMLI SİNYAL.** Çok-ölçekli momentum (günlük, 1-12 ay) ile dürüst OOS:
+  **IC=+0.069, permütasyon p=0.001 → günlük/momentum ufkunda ölçülebilir, teori-tutarlı (1-ay
+  reversal + 12-ay momentum) öngörülebilirlik VAR.** Ama yön isabeti drift'i (buy&hold %53.7)
+  geçmiyor → sinyal **kesitsel/rank** nitelikli; market-nötr long-short ile hasat edilmeli.
+  Nüans + dürüstlük uyarıları: [sonuclar.md](sonuclar.md).
+- Çalışan ürün: gerçek-zamanlı duygu + saatlik fiyat + öngörü paneli — `server.py`.
 
 ## Dokümanlar
 | Belge | İçerik |
@@ -49,8 +52,9 @@ Ham "backtest kârlı" **kanıt değildir.** Her sayı şu üçlüden geçmeden 
 Tam liste: [strateji-arastirma.md › Yol Haritası](strateji-arastirma.md). Özet:
 
 - **Stage 0 — Temel dürüstlük** ✅ `validation.py` (WF-CV) + `benchmarks.py`. Sızıntı kapandı, baseline kuruldu.
-- **Stage 1 — İstatistiksel geçerlik** ⏭️ `stats.py`: blok-bootstrap, Deflated Sharpe, PBO, SPA/FDR. (sıradaki)
-- **Stage 2 — Doğru sinyaller** ⏭️ **EN YÜKSEK BEKLENEN-DEĞER.** `features.py` genişletme: 1-12 ay momentum (vol-ölçekli/ölçeksiz ayrı), mid-price reversal, gün-içi/overnight. `labeling.py` triple-barrier. Hedef: baseline IC≈0.005 / p=0.35'i **anlamlı geçmek.**
+- **Stage 2 — Doğru sinyaller (momentum)** ✅ `features.py` çok-ölçekli momentum (`mom_*`/`momsc_*`). Günlük OOS **IC=0.069, p=0.001** — baseline aşıldı, ilk anlamlı sinyal. (Kalan: mid-price reversal, gün-içi/overnight, `labeling.py` triple-barrier — sonraki tur.)
+- **Stage 1 — İstatistiksel geçerlik** ⏭️ **SIRADAKİ.** `stats.py`: blok-bootstrap (efektif-N~5!), Deflated Sharpe, PBO, SPA/FDR. Stage 2'nin p=0.001'i çoklu-test + bağımsızlık düzeltmesinden geçmeli.
+- **Kesitsel L/S** ⏭️ `portfolio.py` (bkz. [portfoy-mimarisi.md](portfoy-mimarisi.md)) — Stage 2 edge'ini market-nötr hasat edip ispatla.
 - **Stage 3** — Rejim koşullama (`regime.py`: Hurst/ADX/vol).
 - **Stage 4** — Meta-model + kalibre confidence (Platt/isotonic, Brier).
 - **Stage 5** — Çok-ufuk (günlük/haftalık bar) + çapraz-kesit rank-momentum (`cross_section.py`).

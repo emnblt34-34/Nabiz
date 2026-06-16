@@ -15,11 +15,25 @@ from __future__ import annotations
 
 import math
 
-PRICE_FEATURES = ["ret1", "ret3", "ret6", "vol", "sma_dist", "rsi"]
+BASE_PRICE_FEATURES = ["ret1", "ret3", "ret6", "vol", "sma_dist", "rsi"]
+
+# Çok-ölçekli momentum ailesi (Stage 2) — araştırmanın "gerçek kanıt bölgesi".
+# Geriye-bakış BAR cinsindendir: GÜNLÜK bar'da [21,63,126,252] ≈ 1/3/6/12 ay
+# (zaman-serisi momentumun en güçlü kanıt aralığı). Her ölçek için:
+#   mom_n   = ham n-bar getirisi (işaretiyle yön)
+#   momsc_n = vol-ölçekli (getiri / (bar-vol·√n)) — Kim-Tse-Wald vol-artefaktını
+#             ham momentumdan AYIRMAK için ayrı tutulur.
+# Yeterli geçmiş yoksa 0 döner (no-look-ahead korunur; MIN_BARS'ı şişirmez).
+MOMENTUM_LOOKBACKS = [21, 63, 126, 252]
+MOMENTUM_FEATURES = ([f"mom_{n}" for n in MOMENTUM_LOOKBACKS]
+                     + [f"momsc_{n}" for n in MOMENTUM_LOOKBACKS])
+
+PRICE_FEATURES = BASE_PRICE_FEATURES + MOMENTUM_FEATURES
 SENT_FEATURES = ["sent", "mom", "posneg", "logvol"]
 FEATURES = PRICE_FEATURES + SENT_FEATURES
 
-# Özellik hesabı için gereken minimum geçmiş bar sayısı (ret6/vol/rsi 6 bar ister).
+# Taban özellikler için gereken minimum geçmiş (ret6/vol/rsi 6 bar). Momentum kendi
+# geçmişini ayrıca ister; yoksa 0 olur — bu yüzden MIN_BARS küçük kalır.
 MIN_BARS = 7
 
 
@@ -72,7 +86,7 @@ def price_features(closes: list[float], i: int) -> dict | None:
         return (c[i] - base) / base if base else 0.0
     win6 = c[i - 5:i + 1]
     sma6 = _mean(win6)
-    return {
+    feat = {
         "ret1": ret(1),
         "ret3": ret(3),
         "ret6": ret(6),
@@ -80,6 +94,25 @@ def price_features(closes: list[float], i: int) -> dict | None:
         "sma_dist": (c[i] - sma6) / sma6 if sma6 else 0.0,
         "rsi": _rsi(c[:i + 1]),
     }
+    feat.update(momentum_features(closes, i))
+    return feat
+
+
+def momentum_features(closes: list[float], i: int) -> dict:
+    """Çok-ölçekli momentum (ham + vol-ölçekli). Yeterli geçmiş yoksa o ölçek 0."""
+    out: dict[str, float] = {}
+    for n in MOMENTUM_LOOKBACKS:
+        base = closes[i - n] if i >= n else 0.0
+        if i >= n and base:
+            r = (closes[i] - base) / base
+            rr = _returns(closes[i - n:i + 1])
+            sd = _std(rr)
+            sc = r / (sd * math.sqrt(n)) if sd else 0.0
+        else:
+            r = sc = 0.0
+        out[f"mom_{n}"] = r
+        out[f"momsc_{n}"] = sc
+    return out
 
 
 def sentiment_features(score_row) -> dict:
