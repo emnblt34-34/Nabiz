@@ -70,6 +70,20 @@ olması için üç parça birlikte çalışır:
 API uçları: `/api/forecast` (tümü), `/api/forecast/{sembol}` (detay + backtest +
 canlı isabet), `/api/backtest` (tam döküm).
 
+## Duygu kaynakları (sentiment)
+Canlı yorum/haber toplanır; panelde her hisse momentum sinyalinin yanında **canlı duygu**
+(💬 skor + içerik sayısı) gösterir. Kaynak durumu (bu ortamda ölçülen):
+- **StockTwits** ✅ — ABD hisseleri iyi kapsanır (40–560 yorum/hisse).
+- **RSS haber** (bloomberght/dunya/ntv/investing/cnbc) — ağırlıkla makro; spesifik BIST
+  ticker'ını nadiren anar.
+- **Reddit** ⚠️ — yetkisiz `.json` 403 bloklu. BIST duygusu (r/borsa, r/BorsaIstanbul) için
+  **ücretsiz Reddit app** aç (reddit.com/prefs/apps → "script"), sonra ortam değişkenlerini ver:
+  `set REDDIT_CLIENT_ID=...` ve `set REDDIT_CLIENT_SECRET=...` → collector otomatik OAuth'a geçer.
+- **KAP** ❌ — kap.org.tr bu ortamdan ulaşılamadı (resmi BIST açıklamaları).
+
+> Dürüst durum: **ABD duygu zengin; BIST ticker-düzeyi duygu ücretsiz kaynaklardan zayıf**
+> (haber makro-odaklı, StockTwits ABD-only). BIST için Reddit OAuth en pratik yol.
+
 ## Ayarlar (server.py içinde)
 - `REFRESH_MIN` — kaç dakikada bir toplansın (varsayılan 10)
 - `RETRAIN_SEC` — öngörü modeli kaç saniyede bir yeniden eğitilsin (varsayılan 6 saat)

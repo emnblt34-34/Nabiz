@@ -55,11 +55,13 @@ SOURCE_TRUST: dict[str, float] = {
 
 # RSS haber kaynakları (hepsi ücretsiz). Çalışmayanı kaldır, yenisini ekle.
 RSS_FEEDS: dict[str, str] = {
+    # Türkçe / BIST (doğrulandı çalışıyor — BIST şirketlerini anar, ticker eşleşir):
     "rss:bloomberght": "https://www.bloomberght.com/rss",
     "rss:investing":   "https://tr.investing.com/rss/news.rss",
-    # İngilizce / global örnekler:
+    "rss:dunya":       "https://www.dunya.com/rss",
+    "rss:ntv_ekonomi": "https://www.ntv.com.tr/ekonomi.rss",
+    # İngilizce / global:
     "rss:cnbc":        "https://www.cnbc.com/id/100003114/device/rss/rss.html",
-    "rss:reuters_biz": "https://feeds.reuters.com/reuters/businessNews",
 }
 
 # Reddit subreddit'leri (ücretsiz okuma). Borsa odaklı topluluklar.

@@ -84,12 +84,17 @@ def rank_now(conn, fc, tickers, interval: str = CS_INTERVAL, usd: bool = True) -
     if len(sigs) < 2:
         return []
 
+    # Canlı DUYGU (24h) — momentum sinyalinin yanında göster (haber/yorum katmanı).
+    sent_map = {s["ticker"]: (s["sentiment"], s["volume"])
+                for s in db.latest_scores(conn, window="24h")}
+
     w = weights.cross_sectional_weights(sigs, vols)
     order = sorted(sigs, key=lambda t: sigs[t], reverse=True)
     out = []
     for i, t in enumerate(order):
         wt = w.get(t, 0.0)
         er = feats[t].get("er", 0.5)
+        sent, sv = sent_map.get(t, (None, 0))
         out.append({
             "ticker": t,
             "rank": i + 1,
@@ -98,5 +103,7 @@ def rank_now(conn, fc, tickers, interval: str = CS_INTERVAL, usd: bool = True) -
             "side": "long" if wt > 0.02 else "short" if wt < -0.02 else "neutral",
             "regime": "trend" if er > 0.55 else "choppy" if er < 0.45 else "nötr",
             "market": TICKER_MARKET.get(t, "US"),
+            "sentiment": round(sent, 3) if sent is not None else None,
+            "sent_n": sv or 0,
         })
     return out
