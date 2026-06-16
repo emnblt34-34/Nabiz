@@ -35,7 +35,13 @@ MOMENTUM_FEATURES = ([f"mom_{n}" for n in MOMENTUM_LOOKBACKS]
 # reversal. Pre-registered + MİNİMAL (çoklu-test/n_trials şişmesin diye 4 ile sınırlı).
 REGIME_FEATURES = ["er", "hurst", "mom63_reg", "mom252_reg"]
 
-PRICE_FEATURES = BASE_PRICE_FEATURES + MOMENTUM_FEATURES + REGIME_FEATURES
+# Hacim-olay ailesi (Stage 7) — haber-etki kanalının BACKTEST EDİLEBİLİR proxy'si.
+# Gerçek duygu/haber geçmişi yok; ama HACİM SPIKE'I dikkat/haber proxy'sidir. Olay-sonrası
+# drift (post-news drift) gerçekse bu özellikler edge taşır. closes+volumes ister; _records
+# ve rank_now merge eder (price_features'a dokunmaz). Yeterli geçmiş yoksa 0.
+VOLUME_FEATURES = ["vol_spike", "vol_trend", "event_ret"]
+
+PRICE_FEATURES = BASE_PRICE_FEATURES + MOMENTUM_FEATURES + REGIME_FEATURES + VOLUME_FEATURES
 SENT_FEATURES = ["sent", "mom", "posneg", "logvol"]
 FEATURES = PRICE_FEATURES + SENT_FEATURES
 
@@ -133,6 +139,29 @@ def momentum_features(closes: list[float], i: int) -> dict:
         out[f"mom_{n}"] = r
         out[f"momsc_{n}"] = sc
     return out
+
+
+def volume_features(closes: list[float], volumes: list[float], i: int, lookback: int = 20) -> dict:
+    """
+    Hacim-olay özellikleri (haber-etki kanalı proxy'si). HACİM SPIKE'I = dikkat/haber.
+    closes + volumes ister; yeterli geçmiş/hacim yoksa hepsi 0. No-look-ahead.
+    """
+    zero = {"vol_spike": 0.0, "vol_trend": 0.0, "event_ret": 0.0}
+    if i < lookback or not volumes or len(volumes) <= i:
+        return zero
+    win = [v for v in volumes[i - lookback + 1:i + 1] if v]
+    avg = _mean(win)
+    if avg <= 0 or not volumes[i]:
+        return zero
+    avg5 = _mean([v for v in volumes[i - 4:i + 1] if v]) if i >= 4 else avg
+    spike = min(volumes[i] / avg, 6.0)              # bugünkü hacim / 20-bar ort (capped)
+    trend = min(avg5 / avg, 4.0) if avg else 1.0    # son 5 / 20 hacim eğilimi
+    ret5 = (closes[i] - closes[i - 5]) / closes[i - 5] if i >= 5 and closes[i - 5] else 0.0
+    return {
+        "vol_spike": spike - 1.0,                   # 0 merkezli (dikkat artışı)
+        "vol_trend": trend - 1.0,
+        "event_ret": ret5 * (spike - 1.0),          # hacimle ağırlıklı son hareket (olay-drift)
+    }
 
 
 def sentiment_features(score_row) -> dict:

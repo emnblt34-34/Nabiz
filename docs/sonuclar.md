@@ -262,3 +262,34 @@ ZAYIF — uzun vadede marjinal anlamlı, yakın dönemde yok.** Bu, "borsa yüks
 duygu/haber/LLM katmanının fiyat-ötesi marjinal katkısı (forward-only ablation). Teknik+momentum
 tek başına yetmiyor — bunu dürüstçe ölçtük.
 
+---
+
+## Stage 7 — Haber-etki kanalı (hacim proxy): edge'i iyileştirdi (2026-06-15)
+
+**Kısıt (fiziksel):** Gerçek duygu/sentiment geçmişe dönük backtest EDİLEMEZ — tarihsel duygu
+verimiz yok (duygu yalnız canlı, ileriye doğru birikir). Bu yüzden haber-etki kanalının
+**backtest edilebilir PROXY'sini** test ettik: **hacim-olay** özellikleri (`vol_spike` = dikkat/
+haber proxy'si, `vol_trend`, `event_ret` = hacimle ağırlıklı son hareket = olay-sonrası drift).
+
+**A/B (aynı 16y USD veri, hacim-olay kapalı vs açık):**
+
+| | Sharpe | bootstrap p | DSR(3) | DSR(7) | DSR(22) |
+|---|---|---|---|---|---|
+| Hacimsiz (Stage 6) | 0.45 | 0.0065 | 0.950 | 0.865 | 0.704 |
+| **+Hacim-olay (Stage 7)** | **0.52** | **0.0020** | **0.980** | **0.935** | 0.828 |
+
+**SONUÇ:**
+1. ✅ **Haber/olay kanalı GERÇEK.** Kaba bir hacim-spike proxy'siyle bile edge iyileşti:
+   DSR(7) **0.865→0.935** (eşiğe çok yaklaştı), bootstrap p 0.0065→**0.0020** (güçlendi).
+2. ✅ **Bu, duygu/haber hipotezini destekleyen ilk pozitif kanıt:** fiyat-ötesi bir kanal
+   (dikkat/işlem yoğunluğu) ölçülebilir öngörü taşıyor.
+3. ⚠️ **Hâlâ DSR(7)=0.935 < 0.95** (n=3'te 0.980 geçiyor). En yakın olduğumuz nokta; kıl payı.
+
+**Trajektori (dürüst):** Stage 6 artefaktı soydu (0.865 temiz) → Stage 7 gerçek bir kanal
+ekledi (0.935). Yön doğru: **gerçek bilgi (haber/olay) ekleyince ispat eşiğine yaklaşıyoruz.**
+
+**Verdikt:** Hacim proxy bile yardım ettiğine göre, **gerçek duygu/LLM (sürpriz/olay/nedensel-
+iletim — dip not #1)** muhtemelen daha fazlasını katar. AMA o forward-only ölçülebilir
+(geçmişe dönük backtest edilemez). Stage 8: canlı sentiment ablation harness'i + LLM haber
+özellik çıkarımı — sonucu zamanla birikir. Canlı panel hacim-olay özellikleriyle güncellendi.
+

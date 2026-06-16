@@ -31,6 +31,9 @@ def _records(conn, ticker: str, horizon: int, interval: str, usd: bool = False) 
             if r["close"] is not None:
                 closes.append(float(r["close"]))
                 dates.append(r["ts"][:10])
+    # Hacim (para-bağımsız) tarihe göre hizalanır — hacim-olay özellikleri için.
+    vmap = {r["ts"][:10]: (r["volume"] or 0.0) for r in db.get_prices(conn, ticker, interval)}
+    volumes = [vmap.get(d, 0.0) for d in dates]
     recs = []
     for i in range(features.MIN_BARS - 1, len(closes)):
         pf = features.price_features(closes, i)
@@ -39,7 +42,8 @@ def _records(conn, ticker: str, horizon: int, interval: str, usd: bool = False) 
         fr = features.forward_return(closes, i, horizon)
         if fr is None:
             continue
-        feat = {**pf, **{k: 0.0 for k in features.SENT_FEATURES}}
+        feat = {**pf, **features.volume_features(closes, volumes, i),
+                **{k: 0.0 for k in features.SENT_FEATURES}}
         recs.append({"date": dates[i], "feat": feat, "fwd": fr, "vol": pf.get("vol") or 0.0})
     return recs
 

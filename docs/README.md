@@ -75,8 +75,9 @@ Tam liste: [strateji-arastirma.md › Yol Haritası](strateji-arastirma.md). Öz
 - **Stage 4 — Ufuk-ensemble + önceden-kayıt** ✅ Ensemble reddedildi (seyreltti). Şeffaf DSR: **p=0.0055 ✓, DSR(n=7)=0.912 ✗ → SINIRDA.** Protokol: [on-kayit-protokol.md](on-kayit-protokol.md).
 - **Stage 5 — Veri/araç genişletme** ✅ Kripto seyreltti, `max` TL veri felaketi → naif ölçekleme eşiği geçmedi.
 - **Stage 6 — USD-bazlı BIST** ✅ **ANA BULGU:** 5y "DSR 0.912" büyük ölçüde **TRY enflasyonu artefaktıydı**; para-nötr (USD) edge ZAYIF (16y Sharpe 0.45 / p=0.006; son 5y ~0). Titiz denomine kendi artefaktımızı yakaladı. Canlı panel USD'ye geçti.
-- **Stage 7 — Duygu/LLM ablation** ⏭️ **SIRADAKİ.** Para-nötr teknik+momentum yetmiyor (dürüstçe ölçüldü). Tek umut: haber/duygu/LLM'in fiyat-ötesi **marjinal** katkısı (forward-only ablation; bkz. [fikirler-dipnotlar.md](fikirler-dipnotlar.md) #1).
-- **Sonraki:** makale — mevcut dürüst sonuçlarla bile yayınlanabilir (zayıf öngörülebilirlik + artefakt-yakalama metodolojisi). (Tam liste + [strateji-arastirma.md](strateji-arastirma.md).)
+- **Stage 7 — Haber-etki kanalı (hacim proxy)** ✅ Gerçek sentiment backtest edilemez; ama hacim-olay proxy'si (dikkat/haber) **edge'i iyileştirdi: DSR(7) 0.865→0.935, p 0.0065→0.0020.** Haber/olay kanalı gerçek → duygu hipotezini destekler. Hâlâ <0.95 ama en yakın nokta.
+- **Stage 8 — Forward sentiment/LLM ablation** ⏭️ **SIRADAKİ.** Gerçek duygu/LLM (sürpriz/olay/nedensel-iletim, dip not #1) yalnız ileriye-dönük ölçülebilir (canlı `predictions` günlüğü). Harness kur, sonuç zamanla biriksin.
+- **Sonraki:** makale — mevcut dürüst sonuçlarla bile yayınlanabilir (zayıf öngörülebilirlik + artefakt-yakalama metodolojisi + haber-kanalı kanıtı). (Tam liste + [strateji-arastirma.md](strateji-arastirma.md).)
 - **Stage 3** — Rejim koşullama (`regime.py`: Hurst/ADX/vol).
 - **Stage 4** — Meta-model + kalibre confidence (Platt/isotonic, Brier).
 - **Stage 5** — Çok-ufuk (günlük/haftalık bar) + çapraz-kesit rank-momentum (`cross_section.py`).

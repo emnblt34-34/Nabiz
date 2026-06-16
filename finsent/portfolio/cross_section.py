@@ -10,7 +10,7 @@ arayüzde DÜRÜSTÇE gösterilir — "kesin ispat değil" diye. (bkz. docs/sonu
 """
 from __future__ import annotations
 
-from .. import prices, features, forecast, fx
+from .. import db, prices, features, forecast, fx
 from ..config import TICKER_MARKET
 from ..evaluation import stats
 from . import weights, ls_backtest
@@ -62,13 +62,22 @@ def rank_now(conn, fc, tickers, interval: str = CS_INTERVAL, usd: bool = True) -
     vols: dict[str, float] = {}
     feats: dict[str, dict] = {}
     for t in tickers:
-        c = fx.usd_series(conn, t, interval)[0] if usd else prices.closes(conn, t, interval)
+        if usd:
+            c, dates = fx.usd_series(conn, t, interval)
+        else:
+            rows = db.get_prices(conn, t, interval)
+            c = [float(r["close"]) for r in rows if r["close"] is not None]
+            dates = [r["ts"][:10] for r in rows if r["close"] is not None]
         if len(c) < features.MIN_BARS:
             continue
-        feat = features.price_features(c, len(c) - 1)
+        vmap = {r["ts"][:10]: (r["volume"] or 0.0) for r in db.get_prices(conn, t, interval)}
+        volumes = [vmap.get(d, 0.0) for d in dates]
+        last = len(c) - 1
+        feat = features.price_features(c, last)
         if feat is None:
             continue
-        feat = {**feat, **{k: 0.0 for k in features.SENT_FEATURES}}
+        feat = {**feat, **features.volume_features(c, volumes, last),
+                **{k: 0.0 for k in features.SENT_FEATURES}}
         sigs[t] = fc.signal_only(feat)
         vols[t] = feat.get("vol") or 0.0
         feats[t] = feat
