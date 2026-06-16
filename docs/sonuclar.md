@@ -423,3 +423,31 @@ kolayca öngörülebilir" DEĞİL). Bu aslında akademik **kesitsel momentum fak
 (Jegadeesh-Titman) sızıntısız, para-nötr, 54-yıllık temiz DOĞRULAMASIDIR — gerçek ve dayanıklı,
 ama bilinen bir olgu (yeni keşif değil). DSR≈1.0 büyük örneklem kaynaklı (>0.999).
 
+
+## Stage 13 — 30 DAKİKALIK öngörü: ÖLÇÜLDÜ, edge YOK (dürüst negatif) (2026-06-16)
+
+**Soru:** Kullanıcı "yarım saatlik trade'ini öngörebildiğimiz hisseler" istedi. Önce ölçtük.
+
+**Yöntem:** Aynı sızıntısız makine — `validation.cross_validate` (purged+embargoed walk-forward,
+5 fold, embargo=2) **30m barlar** üzerinde, horizon=1 (~30dk) ve horizon=2 (~60dk). yfinance 30m
+geçmişi ~60 gün; 29 araç (BIST ~903 bar, ABD ~771 bar). Şans testi: permütasyon p. (`run_30m_research.py`)
+
+| Ufuk | n (havuz) | OOS-IC | isabet | permütasyon p |
+|---|---|---|---|---|
+| ~30 dk (1 bar) | 21515 | **-0.003** | **0.5007** | **0.665** |
+| ~60 dk (2 bar) | 21515 | **-0.001** | **0.4997** | **0.593** |
+
+**SONUÇ:** Havuzda 30dk yön ≈ **yazı-tura**. OOS-IC sıfır, isabet 0.50, p≈0.6 (şanstan ayırt
+edilemez). Hisse bazında birkaçı artıda (AMD h=2: IC +0.086 / hit 0.59; KCHOL, META, GARAN) **ama**
+IC dağılımı 0 etrafında ~simetrik (en güçlü negatif ASELS −0.13) — bu **sinyal değil gürültü
+imzası**. 29×2=58 deneme taranınca birkaç pozitif **beklenir** (çok-test). Tek bir data-mine'lı
+backtest'i "öngörülebilir" diye sunmak projenin tüm disiplinine aykırı olurdu → **yapmadık**.
+
+**ÜRÜNE YANSIMASI:** Arayüze **30dk sekmesi eklendi** (mumlar gerçek gün-içi durumu gösterir,
+faydalı) ama projeksiyon **sahte koni değil**: yön=nötr, etiket dürüstçe *"ölçüldü: edge yok
+(≈yazı-tura, OOS-IC≈0, p≈0.60)"*. Belirsizlik bandı (gerçekleşen volatilite) gösterilir.
+
+**DEĞERİ:** Negatif ama bilimsel olarak anlamlı — **gün-içi etkin-piyasa sınırını** doğrular.
+Ölçülen edge günlük/haftalık kesitsel momentumda; 30dk–3saat ölçeğinde ≈yazı-tura. Bu, "her ölçekte
+para var" iddiasının tam tersi ve projenin dürüstlük ekseninin kanıtı: **ölçeriz, uydurmayız.**
+

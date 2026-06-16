@@ -88,6 +88,8 @@ def _forecast_cycle():
     try:
         conn = db.connect()
         prices.update_prices(conn, list(TICKERS), period=PRICE_PERIOD_LIVE)
+        # 30dk mum grafiği için taze gün-içi barlar (öngörü YOK — sadece görsel durum; Stage 13).
+        prices.update_prices(conn, list(TICKERS), period="5d", interval="30m")
         forecast.resolve_due(conn)
         preds = forecast.forecast_all(conn, _fc["model"], list(TICKERS))
         forecast.log_predictions(conn, preds, HORIZON_BARS)
@@ -404,6 +406,13 @@ def _projection(symbol: str, tf: str, candles: list[dict]) -> dict | None:
     rets = [(closes[i] - closes[i - 1]) / closes[i - 1]
             for i in range(1, len(closes)) if closes[i - 1]]
     vol = statistics.pstdev(rets[-20:]) if len(rets) >= 5 else 0.012
+    if tf == "halfhour":
+        # 30dk: sızıntısız walk-forward CV ile ÖLÇÜLDÜ → havuz OOS-IC≈0, perm_p≈0.60.
+        # Yani yarım saatlik yön ≈ yazı-tura. Sahte koni çizmeyiz; sadece belirsizlik bandı +
+        # dürüst "edge yok" etiketi. (bkz. run_30m_research.py, docs/sonuclar.md Stage 13)
+        return {"direction": "neutral", "drift_pct": 0.0,
+                "band_pct": round(vol * 100, 2), "horizon_bars": 1, "label": "~30 dk",
+                "strength": "ölçüldü: edge yok (≈yazı-tura, OOS-IC≈0, p≈0.60)", "signal": 0.0}
     if tf == "hourly":
         item = next((p for p in _fc["latest"] if p["ticker"] == symbol), None)
         sig = item["signal"] if item else 0.0
@@ -425,10 +434,11 @@ def _projection(symbol: str, tf: str, candles: list[dict]) -> dict | None:
 
 @app.get("/api/candles/{symbol}")
 def candles_api(symbol: str, tf: str = "daily"):
-    """Mum verisi (OHLC) + dürüst öngörü projeksiyonu. tf: hourly|daily|weekly."""
+    """Mum verisi (OHLC) + dürüst öngörü projeksiyonu. tf: halfhour|hourly|daily|weekly."""
+    from datetime import datetime, timezone
     symbol = symbol.upper()
-    interval = "60m" if tf == "hourly" else "1d"
-    limit = {"hourly": 70, "daily": 90, "weekly": 420}.get(tf, 90)
+    interval = {"halfhour": "30m", "hourly": "60m"}.get(tf, "1d")
+    limit = {"halfhour": 90, "hourly": 70, "daily": 90, "weekly": 420}.get(tf, 90)
     conn = db.connect()
     rows = db.get_prices(conn, symbol, interval, limit=limit)
     conn.close()
@@ -438,6 +448,8 @@ def candles_api(symbol: str, tf: str = "daily"):
         cs = _resample_weekly(cs)
     cs = cs[-60:]
     return {"symbol": symbol, "tf": tf, "candles": cs, "projection": _projection(symbol, tf, cs),
+            "as_of": datetime.now(timezone.utc).isoformat(),
+            "last_bar": cs[-1]["t"] if cs else None,
             "note": "Sağdaki koni = model yön eğilimi + belirsizlik bandı (gelecek mum değil)."}
 
 

@@ -267,6 +267,7 @@ async function toggle(sym){
 function chartHTML(sym){
   return `<div class="chart-wrap">
     <div class="cftabs" id="cftabs-${sym}">
+      <button data-tf="halfhour" onclick="loadChart('${sym}','halfhour')">30dk</button>
       <button data-tf="hourly" onclick="loadChart('${sym}','hourly')">Saatlik</button>
       <button data-tf="daily" class="on" onclick="loadChart('${sym}','daily')">Günlük</button>
       <button data-tf="weekly" onclick="loadChart('${sym}','weekly')">Haftalık</button>
@@ -315,11 +316,13 @@ function drawCandles(sym,d){
     ctx.beginPath(); ctx.moveTo(xLast,yOf(last)); ctx.lineTo(x1,yOf(cE)); ctx.stroke();
   }
   if(lab){
+    const ft=t=>{ if(!t)return '—'; const x=new Date(t); return isNaN(x)?'—':x.toLocaleString('tr-TR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); };
+    const stamp=`<span style="color:var(--faint)">⌚ veri sonu: ${ft(d.last_bar)} · üretim: ${ft(d.as_of)}</span>`;
     if(proj){
       const ar=proj.direction==='up'?'▲':proj.direction==='down'?'▼':'▬';
       const dc=proj.direction==='up'?'var(--pos)':proj.direction==='down'?'var(--neg)':'var(--muted)';
-      lab.innerHTML=`Öngörü (${proj.label}): <b style="color:${dc}">${ar} ${proj.drift_pct>=0?'+':''}${proj.drift_pct}%</b> · belirsizlik ±${proj.band_pct}% · <span style="color:var(--faint)">${esc(proj.strength)}</span><br><span style="color:var(--faint)">${esc(d.note||'')}</span>`;
-    } else lab.innerHTML='<span style="color:var(--faint)">Öngörü yok (model hazırlanıyor).</span>';
+      lab.innerHTML=`Öngörü (${proj.label}): <b style="color:${dc}">${ar} ${proj.drift_pct>=0?'+':''}${proj.drift_pct}%</b> · belirsizlik ±${proj.band_pct}% · <span style="color:var(--faint)">${esc(proj.strength)}</span><br>${stamp}<br><span style="color:var(--faint)">${esc(d.note||'')}</span>`;
+    } else lab.innerHTML=`<span style="color:var(--faint)">Öngörü yok (model hazırlanıyor).</span><br>${stamp}`;
   }
 }
 
