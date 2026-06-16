@@ -357,6 +357,10 @@ def crosssection():
         status_txt = "sınırda-anlamlı (kesin ispat değil)"
     else:
         status_txt = "zayıf / doğrulanamadı"
+    # En yüksek GÜVENLİ long (kalibre güven-proxy). Yoksa None (yüksek güven nadir).
+    longs = [it for it in _cs["ranking"]
+             if it.get("side") == "long" and it.get("confidence") is not None]
+    top_pick = max(longs, key=lambda it: it["confidence"], default=None)
     return {
         "ready": _cs["model"] is not None,
         "asof": _cs["trained_at"],
@@ -364,12 +368,15 @@ def crosssection():
         "record": rec,
         "status": status_txt,
         "ranking": _cs["ranking"],
+        "top_pick": top_pick,
         "currency": "USD",
         "error": _cs["error"],
         "note": "PARA-NÖTR (BIST USD'ye çevrili): hisseleri göreli güç sırasına dizer (yön değil "
-                "sıralama). Edge ZAYIF (Sharpe~0.56) ama 27y dayanıklı ve önceden-kayıtlı eşiği "
-                "geçti (DSR~0.96, p~0.002). TL-bazlı 'güçlü' sinyal kur artefaktıydı (Stage 6).",
-        "disclaimer": "Yatırım tavsiyesi değildir; edge zayıf (Sharpe~0.5) ama istatistiksel anlamlı.",
+                "sıralama). Edge zayıf-orta ama on yıllarca dayanıklı ve önceden-kayıtlı eşiği "
+                "geçti (DSR>0.99). 41-hisselik likit evren edge'i güçlendirdi (Stage 12/15). "
+                "TL-bazlı 'güçlü' sinyal kur artefaktıydı (Stage 6).",
+        "disclaimer": "Yatırım tavsiyesi değildir; edge zayıf-orta (akademik momentum faktörü) ama "
+                      "istatistiksel anlamlı. Tek-hisse yön garantisi DEĞİL; göreli sıralama.",
     }
 
 
@@ -450,7 +457,8 @@ def candles_api(symbol: str, tf: str = "daily"):
     return {"symbol": symbol, "tf": tf, "candles": cs, "projection": _projection(symbol, tf, cs),
             "as_of": datetime.now(timezone.utc).isoformat(),
             "last_bar": cs[-1]["t"] if cs else None,
-            "note": "Sağdaki koni = model yön eğilimi + belirsizlik bandı (gelecek mum değil)."}
+            "note": "Sağdaki kesikli mumlar + koni = model SENARYOSU (yön eğilimi + √t belirsizlik). "
+                    "Gerçek gelecek mum DEĞİL — olasılık görselleştirmesi."}
 
 
 @app.get("/api/ablation")

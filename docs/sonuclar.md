@@ -451,3 +451,53 @@ faydalı) ama projeksiyon **sahte koni değil**: yön=nötr, etiket dürüstçe 
 Ölçülen edge günlük/haftalık kesitsel momentumda; 30dk–3saat ölçeğinde ≈yazı-tura. Bu, "her ölçekte
 para var" iddiasının tam tersi ve projenin dürüstlük ekseninin kanıtı: **ölçeriz, uydurmayız.**
 
+
+## Stage 14 — GÜVEN (confidence) KALİBRE: yüksek güven gerçekten daha isabetli (2026-06-16)
+
+**Soru:** "Güveni çok alabildiğimiz hisse var mı?" Önce "güven"in anlamlı olduğunu ÖLÇTÜK —
+yoksa rozet göstermek hikâye olurdu.
+
+**Yöntem:** Güven-proxy = momentum-hizalama (mom_21/63/126/252 sinyalle aynı yönde mi, 0.6) +
+trend rejimi (ER, 0.4). Sızıntısız walk-forward'da **216k OOS nokta**, güven kovasına göre isabet.
+(`run_confidence_research.py`)
+
+| Güven kovası | n | OOS isabet | sinyal-yönlü ort. getiri |
+|---|---|---|---|
+| düşük <0.40 | 133276 | **0.489** (≈yazı-tura) | -0.0005 |
+| orta 0.40–0.66 | 82311 | **0.530** | +0.0030 |
+| yüksek ≥0.66 | 388 | **0.590** | +0.0078 |
+
+**SONUÇ:** İsabet **monoton artıyor** (0.49 → 0.53 → 0.59); sinyal-yönlü getiri de (−0.0005 →
++0.0030 → +0.0078). Yani çok-ölçekli momentum hizalanması + trend rejimi, sinyalin yön isabetini
+GERÇEKTEN artırıyor — "güven" **kalibre**. **Ama dürüst sınırlar:** yüksek güven **NADİR**
+(n=388, ~%0.2) ve o kovada bile isabet ~%59 (kesinlik değil; ~%40 yanılır). Yüksek kovada IC
+işareti küçük-örneklem gürültüsü; yön (isabet/getiri) kalibre olan şey.
+
+**ÜRÜNE YANSIMASI:** Kesitsel panele **güven rozeti** (düşük/orta/yüksek, ölçülen isabetle) +
+**🎯 en güvenli sinyal** kutusu eklendi. Kutu *"alım gücü neden? (haber değil, teknik)"* sorusunu
+gerçek sürücülerle açıklar: kaç momentum ufku hizalı, rejim, hacim trendi, ve **haber yoksa**
+"alım baskısı TEKNİK (momentum+trend), haberden değil". Ayrıca grafiklere **senaryo mumları**
+(içi boş + kesikli, √t genişleyen) — gelecek mum DEĞİL, olasılık görselleştirmesi; saatlik dahil.
+
+
+## Stage 15 — Piyasa taraması: ">%70 güven" hisse YOK; en-potansiyellileri ekledik (2026-06-16)
+
+**İstek:** "Borsayı araştır, güven %70'ten yüksek olabilecek potansiyelli hisseleri ekle."
+
+**Yöntem:** 65 likit/haber-zengin aday (BIST-30 + ABD large-cap), mevcut evrende eğitilen kesitsel
+modelle güncel sinyal + **kalibre güven** (Stage 14). USD-bazlı. (`run_market_scan.py`)
+
+**SONUÇ (dürüst):** Taranan 65 hissenin **HİÇBİRİ şu an ≥0.70 — hatta ≥0.66 DEĞİL.** Güven tavanı
+**0.60** (orta katman, ölçülen isabet ~%53). Bu beklenen: Stage 14 yüksek güvenin **nadir** (~%0.2)
+olduğunu ölçmüştü. **">%70 güvenilir yön" veren hisse YOK** — olsaydı ölçtüğümüz EMH sınırı çökerdi.
+Kullanıcıya net söylenen: güven-proxy bir olasılık değil; en yüksek katmanda bile ölçülen tavan ~%59.
+
+**EKLENEN (12):** 0.60 kümesi = **4/4 momentum HİZALI** ama rejim henüz trend değil → trende dönerse
+yüksek-güven katmanına geçebilecek gerçek potansiyel: LLY, CSCO, MU, INTC, PYPL, MRVL, TMUS, SNOW,
+CRWD, COIN (ABD) + FROTO, ARCLK (BIST). Canlı evren **29 → 41**. Sistem, bunlar yüksek güvene
+geçtiğinde 🎯 kutusunda işaretler.
+
+**BİLİMSEL NOT:** Bu genişleme **canlı izleme/kapsama** içindir; önceden-kayıtlı backtest iddiası
+**Stage 12'nin 29-hisselik** sonucudur (değişmedi). Likit large-cap eklemek kesitsel genişliği artırır
+(Stage 12 dersi: geniş kesit edge'i güçlendirdi), yön garantisi vermez. Eklenenler post-hoc, pre-registered değil.
+

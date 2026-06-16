@@ -85,6 +85,13 @@
   .csx .st-mid{background:rgba(255,180,84,.16);color:var(--amber)}
   .csx .st-ok{background:rgba(54,211,153,.16);color:var(--pos)}
   .csx .st-weak{background:var(--surface2);color:var(--muted)}
+  .csx .cf{font-size:9px;padding:1px 5px;border-radius:6px;font-weight:700;white-space:nowrap}
+  .cf-hi{background:rgba(54,211,153,.18);color:var(--pos)}
+  .cf-mid{background:rgba(255,180,84,.16);color:var(--amber)}
+  .cf-lo{background:var(--surface2);color:var(--faint)}
+  .toppick{margin:9px 0 3px;background:rgba(124,92,255,.10);border:1px solid rgba(124,92,255,.30);border-radius:12px;padding:10px 12px}
+  .toppick .tp-h{font-size:12.5px;font-weight:700;margin-bottom:3px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+  .toppick ul{margin:5px 0 0;padding-left:16px} .toppick li{font-size:11px;color:var(--muted);line-height:1.55}
   .cslist{margin-top:10px}
   .csrow{display:flex;align-items:center;gap:9px;padding:7px 0;border-top:1px solid var(--line);font-size:12.5px}
   .csrow .rk{color:var(--faint);font-size:10.5px;width:16px;text-align:right;font-family:ui-monospace,monospace}
@@ -188,6 +195,7 @@ function renderCsx(cs){
   const stClass=(r.dsr7!=null&&r.dsr7>0.95)?'st-ok':(r.bootstrap_p!=null&&r.bootstrap_p<0.05)?'st-mid':'st-weak';
   const rec=`Market-nötr backtest (${r.horizon_days||5}g · ${r.n_rebalances||0} rebalans): `
     +`Sharpe <b>${r.sharpe??'–'}</b> · DSR(7) <b>${r.dsr7??'–'}</b> · bootstrap p <b>${r.bootstrap_p??'–'}</b>`;
+  const cfCls=l=>l==='yüksek'?'cf-hi':l==='orta'?'cf-mid':'cf-lo';
   const rows=(cs.ranking||[]).map(it=>{
     const lab=it.side==='long'?'GÜÇLÜ':it.side==='short'?'ZAYIF':'NÖTR';
     const sgn=(it.signal>=0?'+':'')+(+it.signal).toFixed(2);
@@ -196,16 +204,27 @@ function renderCsx(cs){
       : `<span class="se" style="color:${col(it.sentiment)}" title="${it.sent_n} yorum/haber">💬 ${(it.sentiment>=0?'+':'')+(+it.sentiment).toFixed(2)}</span>`;
     const nb = (it.news_n>0)
       ? `<span class="nw" title="son 48 saatte ${it.news_n} haber">📰${it.news_n}</span>` : '<span class="nw"></span>';
+    const cf = it.conf_label
+      ? `<span class="cf ${cfCls(it.conf_label)}" title="${(it.why||[]).join(' · ')} — ölçülen OOS isabet ~%${Math.round((it.conf_hit||0.5)*100)}">${esc(it.conf_label)}</span>` : '';
     return `<div class="csrow"><span class="rk">${it.rank}</span>
       <span class="tk">${it.ticker}</span><span class="mk">${it.market}</span>
       <span class="sd ${it.side}">${lab}</span>
       <span class="sc" style="color:${col(it.signal)}">${sgn}</span>
-      ${se}${nb}
+      ${se}${nb}${cf}
       <span class="rg">${esc(it.regime||'')}</span></div>`;
   }).join("");
+  const tp=cs.top_pick;
+  const tpHtml = tp ? `<div class="toppick">
+    <div class="tp-h">🎯 En güvenli sinyal: ${esc(tp.ticker)}
+      <span class="cf ${cfCls(tp.conf_label)}">${esc(tp.conf_label)} güven · ölçülen isabet ~%${Math.round((tp.conf_hit||0.5)*100)}</span></div>
+    <div class="rec">Sinyal <b>${(tp.signal>=0?'+':'')+(+tp.signal).toFixed(2)}</b> · ${esc(tp.regime||'')} rejim · <b>alım gücü neden? (haber değil, teknik)</b>:</div>
+    <ul>${(tp.why||[]).map(w=>`<li>${esc(w)}</li>`).join("")}</ul>
+    <div class="rec" style="margin-top:5px;color:var(--faint)">Dürüstlük: "yüksek güven" NADİR (~%0.2) ve o kovada bile isabet ~%59 — kesinlik değil, ~%40 yanılır. Bu göreli sıralama, yön garantisi değil.</div>
+  </div>` : '';
   $("csx").innerHTML=`<div class="csx">
     <div class="h">📊 Kesitsel Öngörü <span class="badge ${stClass}">${esc(cs.status||'')}</span></div>
     <div class="rec">${rec}</div>
+    ${tpHtml}
     <div class="cslist">${rows}</div>
     <div class="rec" style="margin-top:9px">${esc(cs.note||"")}</div>
   </div>`;
@@ -309,10 +328,25 @@ function drawCandles(sym,d){
   ctx.beginPath(); ctx.moveTo(pL,yOf(last)); ctx.lineTo(W-pR,yOf(last)); ctx.stroke(); ctx.setLineDash([]);
   if(proj){
     const k=proj.direction==='up'?'#36d399':proj.direction==='down'?'#ff5d73':'#878d9e';
-    const x1=W-pR, cE=last*(1+proj.drift_pct/100), uE=last*(1+(proj.drift_pct+proj.band_pct)/100), lE=last*(1+(proj.drift_pct-proj.band_pct)/100);
-    ctx.fillStyle=k+'22';
+    const x1=W-pR, dr=proj.drift_pct/100, bd=proj.band_pct/100;
+    const cE=last*(1+dr), uE=last*(1+dr+bd), lE=last*(1+dr-bd);
+    // belirsizlik konisi (zarf) — faint
+    ctx.fillStyle=k+'18';
     ctx.beginPath(); ctx.moveTo(xLast,yOf(last)); ctx.lineTo(x1,yOf(uE)); ctx.lineTo(x1,yOf(lE)); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle=k; ctx.lineWidth=1.5;
+    // SENARYO mumları (GERÇEK DEĞİL): drift'i izleyen, belirsizlikle √t genişleyen hayalet mumlar.
+    // İçi boş + kesikli = "olası senaryo", gerçek mum değil. Nötr/drift~0 ise düz doji (dürüst).
+    const N=Math.max(1,Math.min(4,proj.horizon_bars||3));
+    const projW=x1-xLast, gw=projW/N, gbw=Math.max(2,gw*0.46);
+    ctx.setLineDash([2,2]); ctx.lineWidth=1; ctx.strokeStyle=k;
+    for(let s=1;s<=N;s++){
+      const o=last*(1+dr*(s-1)/N), c=last*(1+dr*s/N), bS=bd*Math.sqrt(s/N);
+      const gx=xLast+gw*(s-0.5), hi2=c*(1+bS), lo2=c*(1-bS);
+      ctx.beginPath(); ctx.moveTo(gx,yOf(hi2)); ctx.lineTo(gx,yOf(lo2)); ctx.stroke();      // fitil = belirsizlik
+      const yo=yOf(o), yc=yOf(c);
+      ctx.strokeRect(gx-gbw/2, Math.min(yo,yc), gbw, Math.max(1.5,Math.abs(yc-yo)));         // içi boş gövde
+    }
+    ctx.setLineDash([]);
+    ctx.strokeStyle=k; ctx.lineWidth=1;                                                       // drift orta çizgisi
     ctx.beginPath(); ctx.moveTo(xLast,yOf(last)); ctx.lineTo(x1,yOf(cE)); ctx.stroke();
   }
   if(lab){

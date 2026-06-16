@@ -21,6 +21,62 @@ from . import weights, ls_backtest
 CS_HORIZON = 5          # gün (ufuk)
 CS_INTERVAL = "1d"
 
+# Güven (confidence) — KALİBRE EDİLDİ (run_confidence_research.py, 216k OOS nokta):
+# momentum-hizalama(0.6)+trend-rejimi(0.4) → düşük<0.40 isabet~0.49, orta~0.53, yüksek≥0.66 ~0.59.
+# "güven"i iddia etmiyoruz; ölçülen isabetle gösteriyoruz. Yüksek NADİR (~%0.2).
+_CONF_LOOKBACKS = [21, 63, 126, 252]
+
+
+def _sgn(x: float) -> int:
+    return 1 if x > 0 else -1 if x < 0 else 0
+
+
+def _confidence(feat: dict, signal: float) -> float:
+    s = _sgn(signal)
+    if s == 0:
+        return 0.0
+    align = sum(1 for n in _CONF_LOOKBACKS if _sgn(feat.get(f"mom_{n}", 0.0)) == s) / len(_CONF_LOOKBACKS)
+    er = feat.get("er", 0.5)
+    regime = max(0.0, min(1.0, (er - 0.45) / 0.20))
+    return round(0.6 * align + 0.4 * regime, 3)
+
+
+def _conf_label(conf: float):
+    """Dönüş: (etiket, ölçülen_isabet)."""
+    if conf >= 0.66:
+        return "yüksek", 0.59
+    if conf >= 0.40:
+        return "orta", 0.53
+    return "düşük", 0.49
+
+
+def _why(feat: dict, signal: float, news_n: int, side: str) -> list[str]:
+    """'Alım/satım gücü neden?' — haber DEĞİL, ölçülen teknik sürücüler (momentum+rejim+hacim)."""
+    s = _sgn(signal)
+    aligned = sum(1 for n in _CONF_LOOKBACKS if _sgn(feat.get(f"mom_{n}", 0.0)) == s)
+    er = feat.get("er", 0.5)
+    why = [f"{aligned}/4 momentum ufku (≈1–12 ay) sinyalle aynı yönde"
+           + (" — hizalı" if aligned >= 3 else " — karışık")]
+    if er > 0.55:
+        why.append(f"trend rejimi (ER={er:.2f}) → momentum güvenilir")
+    elif er < 0.45:
+        why.append(f"choppy rejim (ER={er:.2f}) → momentum zayıf/dönüşlü")
+    else:
+        why.append(f"nötr rejim (ER={er:.2f})")
+    vt = feat.get("vol_trend", 0.0)
+    if vt > 0.05:
+        why.append("hacim trendi artıda (artan ilgi)")
+    if feat.get("vol_spike", 0.0) > 1.5:
+        why.append("hacim spike (dikkat/olay sinyali)")
+    if news_n == 0:
+        if side == "long":
+            why.append("haber YOK → alım baskısı TEKNİK (çok-ölçekli momentum + trend), haberden değil")
+        elif side == "short":
+            why.append("haber YOK → zayıflık teknik (momentum aşağı), haberden değil")
+    else:
+        why.append(f"son 48s {news_n} haber (haber-etki kanalı olası)")
+    return why
+
 
 def train(conn, tickers, interval: str = CS_INTERVAL, horizon: int = CS_HORIZON,
           usd: bool = True):
@@ -105,17 +161,25 @@ def rank_now(conn, fc, tickers, interval: str = CS_INTERVAL, usd: bool = True) -
         wt = w.get(t, 0.0)
         er = feats[t].get("er", 0.5)
         sent, sv = sent_map.get(t, (None, 0))
+        side = "long" if wt > 0.02 else "short" if wt < -0.02 else "neutral"
+        nn = news_cnt.get(t, 0)
+        conf = _confidence(feats[t], sigs[t])
+        clabel, chit = _conf_label(conf)
         out.append({
             "ticker": t,
             "rank": i + 1,
             "signal": round(sigs[t], 3),
             "weight": round(wt, 3),
-            "side": "long" if wt > 0.02 else "short" if wt < -0.02 else "neutral",
+            "side": side,
             "regime": "trend" if er > 0.55 else "choppy" if er < 0.45 else "nötr",
             "market": TICKER_MARKET.get(t, "US"),
             "sentiment": round(sent, 3) if sent is not None else None,
             "sent_n": sv or 0,
-            "news_n": news_cnt.get(t, 0),   # son 48h haber sayısı
+            "news_n": nn,                    # son 48h haber sayısı
+            "confidence": conf,             # kalibre güven-proxy [0..1]
+            "conf_label": clabel,           # düşük/orta/yüksek
+            "conf_hit": chit,               # bu kovanın ÖLÇÜLEN OOS isabeti
+            "why": _why(feats[t], sigs[t], nn, side),  # alım/satım gücü nedeni (teknik)
         })
     return out
 

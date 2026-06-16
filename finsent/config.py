@@ -43,6 +43,22 @@ TICKERS: dict[str, list[str]] = {
     "KO":    ["coca cola", "coca-cola"],
     "DIS":   ["disney"],
     "UBER":  ["uber"],
+    # --- Stage 15: piyasa taraması ile eklenen YÜKSEK-POTANSİYELLİ likitler ---
+    # run_market_scan.py (65 aday): bunlar 4/4 momentum HİZALI (güven-proxy ~0.60); rejim
+    # trende dönünce yüksek-güven katmanına (≥0.66) geçebilirler. ŞU AN hiçbiri ≥0.70 DEĞİL
+    # (ölçülen tavan ~%53–59; ">%70 güvenilir yön" yok — EMH). Canlı izleme/işaretleme için.
+    "LLY":   ["eli lilly", "lilly"],
+    "CSCO":  ["cisco"],
+    "MU":    ["micron"],
+    "INTC":  ["intel"],
+    "PYPL":  ["paypal"],
+    "MRVL":  ["marvell"],
+    "TMUS":  ["t-mobile", "tmobile"],
+    "SNOW":  ["snowflake"],
+    "CRWD":  ["crowdstrike"],
+    "COIN":  ["coinbase"],
+    "FROTO": ["froto", "ford otosan"],
+    "ARCLK": ["arclk", "arçelik", "arcelik"],
 }
 
 # Borsa/bölge bağlamı — dil ve kaynak seçiminde kullanılır.
@@ -53,6 +69,10 @@ TICKER_MARKET: dict[str, str] = {
     "AMZN": "US", "META": "US", "GOOGL": "US",
     "AMD": "US", "AVGO": "US", "NFLX": "US", "PLTR": "US", "JPM": "US", "V": "US",
     "XOM": "US", "UNH": "US", "WMT": "US", "COST": "US", "KO": "US", "DIS": "US", "UBER": "US",
+    # Stage 15 eklenenler:
+    "LLY": "US", "CSCO": "US", "MU": "US", "INTC": "US", "PYPL": "US", "MRVL": "US",
+    "TMUS": "US", "SNOW": "US", "CRWD": "US", "COIN": "US",
+    "FROTO": "BIST", "ARCLK": "BIST",
 }
 
 # Kaynak türü bazında temel ağırlık. Haber sosyalden ağır çünkü daha az gürültülü.
