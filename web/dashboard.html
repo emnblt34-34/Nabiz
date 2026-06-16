@@ -139,6 +139,7 @@
     <div class="meta"><span><b id="mT">0</b> hisse</span><span><b id="mI">0</b> içerik</span><span id="mU">başlatılıyor…</span></div>
   </div>
   <div id="csx"></div>
+  <div id="dailychk"></div>
   <div id="daytrade"></div>
   <div id="fcsum"></div>
   <div class="controls">
@@ -158,19 +159,20 @@ const pctf=v=>v==null?"–":Math.round(v*100)+"%";
 async function load(){
   $("ri").className="spin";
   try{
-    const [scores,st,dy,fc,cs,dt]=await Promise.all([
+    const [scores,st,dy,fc,cs,dt,dc]=await Promise.all([
       fetch("/api/scores?window=24h").then(r=>r.json()),
       fetch("/api/status").then(r=>r.json()),
       fetch("/api/daily").then(r=>r.json()),
       fetch("/api/forecast").then(r=>r.json()).catch(()=>null),
       fetch("/api/crosssection").then(r=>r.json()).catch(()=>null),
       fetch("/api/daytrade").then(r=>r.json()).catch(()=>null),
+      fetch("/api/dailycheck").then(r=>r.json()).catch(()=>null),
     ]);
     SCORES=scores; $("daily").textContent=dy.text||"—";
     FC={meta:fc,items:{}}; if(fc&&fc.items) fc.items.forEach(i=>FC.items[i.ticker]=i);
     const t=st.last?new Date(st.last*1000).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"}):null;
     $("mU").textContent = st.running?"toplanıyor…":(t?("son: "+t):"ilk toplama sürüyor…");
-    renderCsx(cs); renderDaytrade(dt); renderFcsum(); render();
+    renderCsx(cs); renderDailycheck(dc); renderDaytrade(dt); renderFcsum(); render();
   }catch(e){
     $("list").innerHTML='<div class="state"><h3>Sunucuya ulaşılamadı</h3><p>server.py çalışıyor mu? Terminali kontrol et.</p></div>';
   }finally{$("ri").className="";}
@@ -276,6 +278,28 @@ function renderDaytrade(dt){
     <div class="rec">15dk seviye + 1s trend teyidi · RVOL≥1.5 filtresi · R:R=(Hedef−Giriş)/(Giriş−Stop)</div>
     ${grpHtml}${empty}
     <div class="rec" style="margin-top:8px;color:var(--faint)">⚠️ ${esc(dt.disclaimer||'')}</div>
+  </div>`;
+}
+
+function renderDailycheck(dc){
+  const box=$("dailychk");
+  if(!dc||(!dc.today_count&&!dc.resolved)){box.innerHTML="";return;}
+  const today=dc.today_logged||[];
+  const up=today.filter(x=>x.direction==='up').length, dn=today.filter(x=>x.direction==='down').length, nt=today.filter(x=>x.direction==='neutral').length;
+  const res=dc.resolved||0;
+  let bc='';
+  if(dc.by_confidence){
+    bc=['yüksek','orta','düşük'].filter(k=>dc.by_confidence[k])
+      .map(k=>`${k}: <b>${pctf(dc.by_confidence[k].hit_rate)}</b> <span style="color:var(--faint)">(n=${dc.by_confidence[k].n})</span>`).join(' · ');
+  }
+  const resLine = res>0
+    ? `Canlı yön isabeti: <b>${pctf(dc.hit_rate)}</b> <span style="color:var(--faint)">(${res} çözüldü)</span>${bc?'<br>güven katmanına göre: '+bc:''}`
+    : `Henüz çözülen yok — <b>${dc.open||0}</b> çağrı yarın (ufuk dolunca) sonuçlanacak.`;
+  box.innerHTML=`<div class="csx" style="border-color:rgba(54,211,153,.22)">
+    <div class="h">📋 Günlük Yön Takibi <span class="badge st-mid">bugün ${dc.today_count||today.length} çağrı</span></div>
+    <div class="rec">Bugün loglandı: <b style="color:var(--pos)">▲ ${up}</b> · <b style="color:var(--neg)">▼ ${dn}</b> · <span style="color:var(--muted)">▬ ${nt} nötr</span> → yarın gerçekleşenle kıyaslanacak (sahada ölçüm, uydurma değil).</div>
+    <div class="rec" style="margin-top:5px">${resLine}</div>
+    <div class="rec" style="margin-top:6px;color:var(--faint)">${esc(dc.disclaimer||'')}</div>
   </div>`;
 }
 

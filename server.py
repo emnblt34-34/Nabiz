@@ -23,7 +23,7 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 
 from finsent import db, prices, forecast, fx
-from finsent.portfolio import cross_section
+from finsent.portfolio import cross_section, daily_check
 from finsent.signals import daytrade
 from finsent.evaluation import validation, benchmarks
 from finsent.pipeline import run_once
@@ -127,6 +127,10 @@ def _cs_cycle():
         # (b) forward sentiment ablation: olgunlaşanı sonuçla + bugünü logla (1/gün)
         cross_section.resolve_ablation(conn)
         cross_section.log_ablation(conn, _cs["ranking"])
+        # (Stage 17) günlük yön anlık-kaydı: ufku dolanı çöz + bugünü logla (1/gün) —
+        # "yarın tutarlılığı inceleme" + Stage 14 güven kalibrasyonunun canlı OOS doğrulaması.
+        daily_check.resolve(conn)
+        daily_check.log_snapshot(conn, _cs["ranking"], horizon_days=1)
         conn.close()
     except Exception as e:
         print("[crosssection] cycle hata:", e)
@@ -480,6 +484,25 @@ def candles_api(symbol: str, tf: str = "daily"):
             "last_bar": cs[-1]["t"] if cs else None,
             "note": "Sağdaki kesikli mumlar + koni = model SENARYOSU (yön eğilimi + √t belirsizlik). "
                     "Gerçek gelecek mum DEĞİL — olasılık görselleştirmesi."}
+
+
+@app.get("/api/dailycheck")
+def dailycheck_api():
+    """Günlük yön anlık-kaydı (Stage 17): bugünün yön çağrıları + çözülenlerin canlı isabeti
+    (genel + güven katmanına göre). 'Yarın tutarlılığı inceleme'nin dürüst sahası."""
+    conn = db.connect()
+    st = daily_check.stats(conn)
+    today = __import__("datetime").date.today().isoformat()
+    rows = conn.execute(
+        "SELECT ticker, market, direction, conf_label, signal, price_at, target_ts "
+        "FROM daily_check WHERE made_at LIKE ? ORDER BY confidence DESC", (today + "%",)).fetchall()
+    conn.close()
+    st["today_logged"] = [dict(r) for r in rows]
+    st["today_count"] = len(rows)
+    st["disclaimer"] = ("Yön çağrıları SAHADA ölçülür (geçmişe uydurulmaz). Tek-gün gürültülüdür; "
+                        "tutarlılık günlerce birikince anlam kazanır. Model native ufku 5 gün (Stage 12); "
+                        "burada 1-günlük tutarlılık + güven kalibrasyonu canlı izlenir.")
+    return st
 
 
 @app.get("/api/daytrade")

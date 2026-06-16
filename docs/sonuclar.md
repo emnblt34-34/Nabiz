@@ -524,3 +524,25 @@ hepsi gerçek/hesaplanabilir; sadece "kazandırır" iddiası YOK.
 uzak). Yön öngörülmez. Bu, tanımlı-riskli kurulumların hacim+geometri sıralamasıdır; karar kullanıcının.
 Ölçtüğümüz tek gerçek edge hâlâ günlük/haftalık kesitsel momentum (Stage 12/15); gün-içi ≈yazı-tura.
 
+
+## Stage 17 — Günlük yön anlık-kaydı: "yarın tutarlılığı" için CANLI saha (2026-06-16)
+
+**İstek:** "Bugünkü durumları not aldık mı? Yarın değişim öngörülerinin tutarlılığını inceleyeceğiz."
+
+**Mevcut durum (dürüst denetim):** 3-saatlik forecaster (`predictions`) zaten loglanıp oto-çözülüyor
+(bugün 562 kayıt; canlı isabet ~0.44 — zayıf intraday, dürüst). Kesitsel ablation (`cs_ablation`)
+günlük loglanıyor ama 5-gün ufkunda (yarın çözülmez). **Eksik:** günlük YÖN çağrılarının temiz
+1-günlük "yarın" kontrolü.
+
+**EKLENEN (`finsent/portfolio/daily_check.py`, tablo `daily_check`, `/api/dailycheck`):**
+Her gün 1 kez, her hisse için O ANKİ yön (kesitsel side) + güven + USD fiyat loglanır; ufuk (1 işlem
+günü) dolunca gerçekleşen USD getiriyle eşlenir, **yön tuttu mu (correct)** işaretlenir. `_cs_cycle`'a
+bağlandı (oto log+resolve). Arayüze **📋 Günlük Yön Takibi** paneli.
+
+**BUGÜN KAYIT ALTINDA:** 41 hisse, yön+güven+fiyat, ufuk hedefi **2026-06-17**. (örn. CSCO/SNOW/LLY/
+AAPL→up; MU/INTC/MRVL→neutral.) Yarın çözülünce **güven katmanına göre isabet** çıkacak — bu aynı
+zamanda **Stage 14 kalibrasyonunun CANLI OOS testi**: yüksek güven gerçekten daha mı isabetli?
+
+**DÜRÜSTLÜK:** Tek-gün gürültülüdür; tutarlılık günlerce birikince anlam kazanır. Sahada ölçülür,
+geçmişe uydurulmaz. Model native ufku 5 gün; burada 1-günlük tutarlılık + kalibrasyon canlı izlenir.
+

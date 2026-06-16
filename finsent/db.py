@@ -106,6 +106,29 @@ CREATE TABLE IF NOT EXISTS cs_ablation (
     resolved_at   TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_abl_open ON cs_ablation(realized_return);
+
+-- GÜNLÜK YÖN ANLIK-KAYDI (Stage 17): her gün her hisse için O ANKİ yön öngörüsü + güven +
+-- USD fiyat loglanır; ufuk (varsayılan 1 işlem günü) dolunca gerçekleşen getiriyle eşlenir.
+-- "Yarın tutarlılığı inceleme"nin ve Stage 14 güven-kalibrasyonunun CANLI OOS doğrulamasıdır:
+-- yüksek güvenli yön çağrıları gerçekten daha mı isabetli? (uydurulmaz, sahada birikir)
+CREATE TABLE IF NOT EXISTS daily_check (
+    id            TEXT PRIMARY KEY,   -- gün|ticker
+    made_at       TEXT NOT NULL,
+    target_ts     TEXT NOT NULL,      -- olgunlaşma (made + horizon işlem günü)
+    ticker        TEXT NOT NULL,
+    market        TEXT,
+    price_at      REAL NOT NULL,      -- USD kapanış (öngörü anı)
+    direction     TEXT NOT NULL,      -- up / down / neutral (öngörülen)
+    signal        REAL,
+    confidence    REAL,
+    conf_label    TEXT,               -- düşük / orta / yüksek
+    horizon_days  INTEGER NOT NULL,
+    realized_return REAL,             -- olgunlaşınca (USD)
+    realized_dir  TEXT,               -- gerçekleşen yön
+    correct       INTEGER,            -- 1/0 (yön tuttu mu; neutral hariç)
+    resolved_at   TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_dc_open ON daily_check(realized_return);
 """
 
 
