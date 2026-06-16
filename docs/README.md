@@ -38,6 +38,10 @@ Ham "backtest kârlı" **kanıt değildir.** Her sayı şu üçlüden geçmeden 
   reversal + 12-ay momentum) öngörülebilirlik VAR.** Ama yön isabeti drift'i (buy&hold %53.7)
   geçmiyor → sinyal **kesitsel/rank** nitelikli; market-nötr long-short ile hasat edilmeli.
   Nüans + dürüstlük uyarıları: [sonuclar.md](sonuclar.md).
+- **Stage 1 + Kesitsel L/S tamam.** Sinyali market-nötr hasat ettik: 5y'de **L/S Sharpe=0.78,
+  blok-bootstrap p=0.032, 1/N-rank'ı yeniyor** (model anlamlı, naif benchmark değil). **Ama
+  Deflated Sharpe=0.51 (<0.95)** → çoklu-test zırhını geçmiyor. **Dürüst konum: zayıf-ama-gerçek,
+  market-nötr momentum edge'i VAR; robust ispat henüz EKSİK.**
 - Çalışan ürün: gerçek-zamanlı duygu + saatlik fiyat + öngörü paneli — `server.py`.
 
 ## Dokümanlar
@@ -51,10 +55,11 @@ Ham "backtest kârlı" **kanıt değildir.** Her sayı şu üçlüden geçmeden 
 ## Yol haritası (nerede kaldık)
 Tam liste: [strateji-arastirma.md › Yol Haritası](strateji-arastirma.md). Özet:
 
-- **Stage 0 — Temel dürüstlük** ✅ `validation.py` (WF-CV) + `benchmarks.py`. Sızıntı kapandı, baseline kuruldu.
-- **Stage 2 — Doğru sinyaller (momentum)** ✅ `features.py` çok-ölçekli momentum (`mom_*`/`momsc_*`). Günlük OOS **IC=0.069, p=0.001** — baseline aşıldı, ilk anlamlı sinyal. (Kalan: mid-price reversal, gün-içi/overnight, `labeling.py` triple-barrier — sonraki tur.)
-- **Stage 1 — İstatistiksel geçerlik** ⏭️ **SIRADAKİ.** `stats.py`: blok-bootstrap (efektif-N~5!), Deflated Sharpe, PBO, SPA/FDR. Stage 2'nin p=0.001'i çoklu-test + bağımsızlık düzeltmesinden geçmeli.
-- **Kesitsel L/S** ⏭️ `portfolio.py` (bkz. [portfoy-mimarisi.md](portfoy-mimarisi.md)) — Stage 2 edge'ini market-nötr hasat edip ispatla.
+- **Stage 0 — Temel dürüstlük** ✅ `evaluation/validation.py` (WF-CV) + `benchmarks.py`. Sızıntı kapandı, baseline kuruldu.
+- **Stage 2 — Doğru sinyaller (momentum)** ✅ `features.py` çok-ölçekli momentum. Günlük OOS **IC=0.069, p=0.001** — baseline aşıldı. (Kalan: mid-price reversal, gün-içi/overnight, triple-barrier — sonraki tur.)
+- **Stage 1 + Kesitsel L/S** ✅ `evaluation/stats.py` (Deflated Sharpe, blok-bootstrap, FDR) + `portfolio/weights.py` + `portfolio/ls_backtest.py`. Edge market-nötr hasat edildi: **Sharpe 0.78, p=0.032, ama DSR=0.51 (<0.95)** → robust ispat eksik.
+- **Stage 3 — Rejim koşullama** ⏭️ **SIRADAKİ.** `signals/regime.py` (Hurst/ADX): momentum yalnız trendli rejimde → sinyal-gürültü artar, edge DSR>0.95'e taşınmaya çalışılır.
+- **Sonraki:** ufuk-birleştirme, meta-model/kalibrasyon, çapraz-kesit genişletme, LLM özellik katmanı, coin. (Tam liste yukarıda + [strateji-arastirma.md](strateji-arastirma.md).)
 - **Stage 3** — Rejim koşullama (`regime.py`: Hurst/ADX/vol).
 - **Stage 4** — Meta-model + kalibre confidence (Platt/isotonic, Brier).
 - **Stage 5** — Çok-ufuk (günlük/haftalık bar) + çapraz-kesit rank-momentum (`cross_section.py`).
@@ -77,12 +82,14 @@ python -m scripts.run_validation
 ```
 
 ## Mimari (modül haritası)
-**Duygu kolu:** `collectors/` → `pipeline.py` → `sentiment.py` / `credibility.py` →
-`aggregate.py` → `db.py`.
-**Öngörü kolu:** `prices.py` (yfinance) → `features.py` → `forecast.py` (kural+ML blend)
-→ `db.py` (predictions log).
-**Bilim kolu (Stage 0):** `validation.py` (purged+embargoed WF-CV) + `benchmarks.py`
-(null'lar) → `scripts/run_validation.py`.
-**Arayüz:** `server.py` + `web/dashboard.html`.
+Domain'lere ayrık, bağımlılığı tek yönlü paket yapısı — **tam harita + yeni modül nereye
+girer: [MIMARI.md](MIMARI.md).** Özet katmanlar:
+- **Çekirdek:** `config / models / tickers / db`.
+- **Veri:** `collectors/` (duygu kaynakları), `prices.py` (yfinance).
+- **Duygu hattı:** `sentiment / credibility / aggregate / pipeline`.
+- **Tahmin:** `features.py` (fiyat+momentum+duygu), `forecast.py` (kural+ML blend).
+- **Bilim — `evaluation/`:** `backtest / validation (WF-CV) / benchmarks / stats (DSR, bootstrap, FDR)`.
+- **Portföy — `portfolio/`:** `weights (kesitsel L/S) / ls_backtest`.
+- **Arayüz/rapor:** `server.py` + `web/dashboard.html`; `scripts/run_*`.
 
 Kod içi yorumlar Türkçe ve ayrıntılıdır; her modülün başındaki docstring sorumluluğu anlatır.

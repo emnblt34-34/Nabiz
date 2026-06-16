@@ -17,8 +17,8 @@ from __future__ import annotations
 
 import math
 
-from . import prices, features
-from .config import PRICE_INTERVAL, NEUTRAL_BAND
+from .. import prices, features
+from ..config import PRICE_INTERVAL, NEUTRAL_BAND
 
 
 def pearson(xs: list[float], ys: list[float]) -> float:

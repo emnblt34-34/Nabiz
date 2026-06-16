@@ -22,7 +22,8 @@ import json
 import hashlib
 from datetime import datetime, timezone, timedelta
 
-from . import db, prices, features, backtest
+from . import db, prices, features
+from .evaluation import backtest
 from .config import (
     PRICE_INTERVAL, HORIZON_BARS, NEUTRAL_BAND, SENT_PRIORS,
 )

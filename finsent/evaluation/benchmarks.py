@@ -17,7 +17,7 @@ from __future__ import annotations
 import random
 
 from . import backtest
-from .config import NEUTRAL_BAND
+from ..config import NEUTRAL_BAND
 
 
 def _dir_metrics(signals: list[float], labels: list[float]) -> dict:

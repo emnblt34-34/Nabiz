@@ -88,3 +88,41 @@ Edge bulundu; şimdi onu market-nötr ölçmek gerekiyor.
 **Verdikt:** İlk kilometre taşı — **günlük/momentum ufkunda, teori-tutarlı, ölçülebilir
 öngörülebilirlik var.** Sıradaki: **Stage 1** (blok-bootstrap + Deflated Sharpe/PBO/FDR ile
 istatistiksel zırh) ve **kesitsel L/S** ile bu edge'i market-nötr hasat edip ispatlamak.
+
+---
+
+## Stage 1 + Kesitsel L/S — sinyali market-nötr hasat + istatistiksel sertleştirme (2026-06-15)
+
+**Ne yapıldı:** `portfolio/weights.py` (kesitsel rank → dolar-nötr + ters-vol) +
+`portfolio/ls_backtest.py` (sızıntısız kesitsel walk-forward, örtüşmesiz rebalans) +
+`evaluation/stats.py` (Sharpe, PSR, **Deflated Sharpe**, **blok-bootstrap**, FDR). Stage 2'nin
+kesitsel momentum sinyali dolar-nötr long-short deftere çevrildi; getiri serisi
+otokorelasyon-dayanıklı (blok-bootstrap) ve çoklu-test-düzeltmeli (DSR) sınandı. (Bu yaklaşım
+pooled-IC'deki bağımsızlık-şişmesini de doğal çözer: rebalans başına 1 örtüşmesiz gözlem.)
+
+| Pencere | Rebalans | Sharpe (yıllık) | Blok-bootstrap p | Deflated Sharpe | 1/N-rank'ı geçer? |
+|---|---|---|---|---|---|
+| 2 yıl | 110 | **+1.29** | 0.017 | 0.52 | ✅ (1.29 vs 1.21) |
+| **5 yıl** | 295 | **+0.78** | **0.032** | **0.51** | ✅ (0.78 vs 0.68) |
+
+**SONUÇ (dürüst, nüanslı):**
+1. ✅ **Sinyal kesitsel olarak GERÇEK.** Market-nötr L/S, momentumu Sharpe ~0.8 (5y) /
+   ~1.3 (2y) ile hasat ediyor — yön drift'ini geçemeyen (Stage 2) sinyal, market-nötr
+   defterde **anlamlı getiri üretiyor.** Portföy tezi (docs/portfoy-mimarisi.md) doğrulandı.
+2. ✅ **Blok-bootstrap p = 0.032 (5y) < 0.05** — ortalama getiri otokorelasyon sonrası anlamlı.
+3. ✅ **Ters-vol ağırlığımız değer katıyor:** 5y'de MODEL anlamlı (p=0.032) iken naif
+   **1/N-rank benchmark anlamlı DEĞİL (p=0.069).** Ağırlıklandırma şeması işe yarıyor.
+4. ⚠️ **AMA Deflated Sharpe ≈ 0.51 (<0.95) — çoklu-test eşiğini GEÇMİYOR.** n_trials=18
+   ve kısa örneklemle SR* eşiği (per-period ~0.11) gözlemlenen Sharpe'a çok yakın.
+   Yani: **"borsa öngörülebilir" iddiası için henüz yeterli değil** — promising ama
+   bulletproof değil. (2y'den 5y'ye Sharpe 1.29→0.78 düşüşü de 2y'nin elverişli pencere
+   olduğunu, 5y'nin daha temsili olduğunu gösteriyor.)
+
+**Verdikt:** **Zayıf ama gerçek, market-nötr, teori-tutarlı bir kesitsel momentum edge'i var;
+otokorelasyona dayanıyor ve naif benchmark'ı yeniyor — ancak çoklu-test (Deflated Sharpe)
+zırhını henüz geçmiyor.** Bilimsel olarak dürüst konum: "edge bulundu, robust ispat eksik."
+
+**Sıradaki (edge'i DSR>0.95'e taşımak için):** Stage 3 **rejim koşullama** (Hurst/ADX —
+momentum yalnız trendli rejimde aç, sinyal-gürültü artar); ufuk-birleştirme (günlük+haftalık);
+n_trials'ı önceden-kayıtlı hipotezle düşürmek (HARKing'i önle); daha uzun geçmiş.
+

@@ -12,8 +12,9 @@ embargo, walk-forward).
 """
 from __future__ import annotations
 
-from . import prices, features, backtest, forecast
-from .config import PRICE_INTERVAL, HORIZON_BARS, NEUTRAL_BAND
+from .. import prices, features, forecast
+from . import backtest
+from ..config import PRICE_INTERVAL, HORIZON_BARS, NEUTRAL_BAND
 
 
 def walk_forward_folds(n: int, n_splits: int = 5, horizon: int = HORIZON_BARS,

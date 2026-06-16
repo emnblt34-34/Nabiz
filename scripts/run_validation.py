@@ -12,7 +12,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from finsent import db, forecast, validation, benchmarks, backtest, prices, features
+from finsent import db, forecast, prices, features
+from finsent.evaluation import validation, benchmarks, backtest
 from finsent.config import TICKERS, HORIZON_BARS, PRICE_INTERVAL
 
 
