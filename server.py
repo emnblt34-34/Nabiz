@@ -23,6 +23,7 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 
 from finsent import db, prices, forecast
+from finsent.portfolio import cross_section
 from finsent.pipeline import run_once
 from finsent.config import TICKERS, HORIZON_BARS, PRICE_PERIOD_BACKTEST, PRICE_PERIOD_LIVE
 from finsent.collectors import (
@@ -37,12 +38,15 @@ REFRESH_MIN = 10          # kaç dakikada bir veri toplansın
 USE_SAMPLE = os.environ.get("NABIZ_SAMPLE") == "1"
 PORT = int(os.environ.get("NABIZ_PORT", "8000"))
 RETRAIN_SEC = 6 * 3600    # modeli kaç saniyede bir yeniden eğit (taze barlarla)
+CS_PERIOD = "5y"          # kesitsel model için günlük geçmiş (doğrulanmış temiz pencere)
 
 app = FastAPI(title="Nabız")
 _state = {"last": 0, "running": False, "stats": None, "error": None}
-# Öngörü durumu: eğitilmiş model + kalibrasyon + backtest + son canlı tahminler.
+# Saatlik öngörü durumu (zayıf/gürültü — Stage 0): model + backtest + son tahminler.
 _fc = {"model": None, "calibration": None, "backtest": None,
        "latest": [], "trained_at": 0, "error": None}
+# Kesitsel öngörü durumu (ASIL ölçülen sinyal): günlük rejim-koşullu momentum, market-nötr.
+_cs = {"model": None, "record": None, "ranking": [], "trained_at": 0, "error": None}
 
 
 def _collectors():
@@ -82,8 +86,34 @@ def _forecast_cycle():
         print("[forecast] cycle hata:", e)
 
 
+def _init_cs():
+    """Bir kez (ve 6 saatte bir): günlük geçmişi çek, KESİTSEL modeli eğit + market-nötr backtest."""
+    try:
+        conn = db.connect()
+        prices.update_prices(conn, list(TICKERS), period=CS_PERIOD, interval="1d")
+        fc, rec = cross_section.train(conn, list(TICKERS))
+        _cs.update({"model": fc, "record": rec, "trained_at": time.time(), "error": None})
+        conn.close()
+        print(f"[crosssection] model hazir: sicil={rec}")
+    except Exception as e:
+        _cs["error"] = str(e)
+        print("[crosssection] init hata:", e)
+
+
+def _cs_cycle():
+    """Her döngüde: güncel kesitsel sıralamayı (en güçlü → en zayıf) hesapla."""
+    if _cs["model"] is None:
+        return
+    try:
+        conn = db.connect()
+        _cs["ranking"] = cross_section.rank_now(conn, _cs["model"], list(TICKERS))
+        conn.close()
+    except Exception as e:
+        print("[crosssection] cycle hata:", e)
+
+
 def _loop():
-    """Arka plan döngüsü (daemon thread): önce duygu, sonra öngörü."""
+    """Arka plan döngüsü (daemon thread): önce duygu, sonra öngörü (saatlik + kesitsel)."""
     while True:
         try:
             _state["running"] = True
@@ -95,6 +125,9 @@ def _loop():
                 if _fc["model"] is None or (time.time() - _fc["trained_at"] > RETRAIN_SEC):
                     _init_forecaster()
                 _forecast_cycle()
+                if _cs["model"] is None or (time.time() - _cs["trained_at"] > RETRAIN_SEC):
+                    _init_cs()
+                _cs_cycle()
         except Exception as e:
             _state["error"] = str(e)
             print("[loop] hata:", e)
@@ -125,6 +158,7 @@ def status():
         "refresh_min": REFRESH_MIN, "sample_mode": USE_SAMPLE,
         "forecast_ready": _fc["model"] is not None,
         "forecast_model": _fc["model"].name if _fc["model"] else None,
+        "cs_ready": _cs["model"] is not None,
     }
 
 
@@ -286,6 +320,36 @@ def backtest_view():
         "n": cal.get("n"),
         "note": "Hit-rate 0.50 = yazi-tura. Gun ici yon tahmini teknikten zordur; "
                 "asil deger duygu sinyalinin canli sicilinde gizli.",
+    }
+
+
+# ---------------- Kesitsel öngörü (ASIL sinyal) API ----------------
+@app.get("/api/crosssection")
+def crosssection():
+    """ASIL ölçülen sinyal: günlük rejim-koşullu kesitsel momentum (market-nötr) +
+    DÜRÜST backtest sicili. Hisseleri birbirine göre sıralar; tek-hisse yönü değil."""
+    rec = _cs["record"] or {}
+    dsr = rec.get("dsr7")
+    p = rec.get("bootstrap_p")
+    if not _cs["model"]:
+        status_txt = "hazırlanıyor (günlük model eğitiliyor, ilk turda ~1-2 dk)"
+    elif dsr is not None and dsr > 0.95 and p is not None and p < 0.05:
+        status_txt = "ispatlandı (robust)"
+    elif p is not None and p < 0.05:
+        status_txt = "sınırda-anlamlı (kesin ispat değil)"
+    else:
+        status_txt = "zayıf / doğrulanamadı"
+    return {
+        "ready": _cs["model"] is not None,
+        "asof": _cs["trained_at"],
+        "horizonDays": rec.get("horizon_days", 5),
+        "record": rec,
+        "status": status_txt,
+        "ranking": _cs["ranking"],
+        "error": _cs["error"],
+        "note": "Hisseleri BİRBİRİNE GÖRE sıralar (market-nötr long-short): üstü göreli güçlü, "
+                "altı göreli zayıf. Tek-hisse mutlak yönü DEĞİL. Saatlik rozetten farklı ve güçlü.",
+        "disclaimer": "Backtest sicili sınırda-anlamlı; yatırım tavsiyesi değildir.",
     }
 
 

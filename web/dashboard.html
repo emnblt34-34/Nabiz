@@ -76,6 +76,26 @@
   .conf{height:5px;width:46px;background:var(--surface2);border-radius:99px;overflow:hidden;display:inline-block;vertical-align:middle}
   .conf>i{display:block;height:100%;background:var(--accent)}
   .fhz{margin-left:auto;color:var(--faint)}
+  /* --- Kesitsel Öngörü (asıl sinyal) --- */
+  .csx{margin-top:12px;background:linear-gradient(135deg,#141a26,#1b2333);border:1px solid rgba(124,92,255,.25);border-radius:16px;padding:14px 16px}
+  .csx .h{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;margin-bottom:5px}
+  .csx .rec{font-size:11px;color:var(--muted);line-height:1.5}
+  .csx .rec b{color:var(--text);font-weight:600}
+  .csx .badge{font-size:9.5px;padding:2px 8px;border-radius:7px;font-weight:600;letter-spacing:.02em}
+  .csx .st-mid{background:rgba(255,180,84,.16);color:var(--amber)}
+  .csx .st-ok{background:rgba(54,211,153,.16);color:var(--pos)}
+  .csx .st-weak{background:var(--surface2);color:var(--muted)}
+  .cslist{margin-top:10px}
+  .csrow{display:flex;align-items:center;gap:9px;padding:7px 0;border-top:1px solid var(--line);font-size:12.5px}
+  .csrow .rk{color:var(--faint);font-size:10.5px;width:16px;text-align:right;font-family:ui-monospace,monospace}
+  .csrow .tk{font-family:ui-monospace,monospace;font-weight:700;font-size:13.5px;min-width:52px}
+  .csrow .mk{font-size:9px;color:var(--faint);border:1px solid var(--line);padding:1px 5px;border-radius:5px}
+  .csrow .sd{font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:6px;min-width:52px;text-align:center}
+  .sd.long{color:var(--pos);background:rgba(54,211,153,.12)}
+  .sd.short{color:var(--neg);background:rgba(255,93,115,.12)}
+  .sd.neutral{color:var(--muted);background:var(--surface2)}
+  .csrow .sc{font-family:ui-monospace,monospace;font-size:11.5px;width:48px;text-align:right;font-variant-numeric:tabular-nums}
+  .csrow .rg{font-size:10px;color:var(--faint);margin-left:auto}
   .spin{animation:rot 1s linear infinite}@keyframes rot{to{transform:rotate(360deg)}}
 </style>
 </head>
@@ -89,6 +109,7 @@
     <div class="gauge"><span class="mid"></span><span class="fp" id="mfp"></span><span class="fn" id="mfn"></span></div>
     <div class="meta"><span><b id="mT">0</b> hisse</span><span><b id="mI">0</b> içerik</span><span id="mU">başlatılıyor…</span></div>
   </div>
+  <div id="csx"></div>
   <div id="fcsum"></div>
   <div class="controls">
     <div class="seg" id="seg"><button data-m="all" class="on">Tümü</button><button data-m="BIST">BIST</button><button data-m="US">ABD</button></div>
@@ -107,17 +128,18 @@ const pctf=v=>v==null?"–":Math.round(v*100)+"%";
 async function load(){
   $("ri").className="spin";
   try{
-    const [scores,st,dy,fc]=await Promise.all([
+    const [scores,st,dy,fc,cs]=await Promise.all([
       fetch("/api/scores?window=24h").then(r=>r.json()),
       fetch("/api/status").then(r=>r.json()),
       fetch("/api/daily").then(r=>r.json()),
       fetch("/api/forecast").then(r=>r.json()).catch(()=>null),
+      fetch("/api/crosssection").then(r=>r.json()).catch(()=>null),
     ]);
     SCORES=scores; $("daily").textContent=dy.text||"—";
     FC={meta:fc,items:{}}; if(fc&&fc.items) fc.items.forEach(i=>FC.items[i.ticker]=i);
     const t=st.last?new Date(st.last*1000).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"}):null;
     $("mU").textContent = st.running?"toplanıyor…":(t?("son: "+t):"ilk toplama sürüyor…");
-    renderFcsum(); render();
+    renderCsx(cs); renderFcsum(); render();
   }catch(e){
     $("list").innerHTML='<div class="state"><h3>Sunucuya ulaşılamadı</h3><p>server.py çalışıyor mu? Terminali kontrol et.</p></div>';
   }finally{$("ri").className="";}
@@ -142,6 +164,34 @@ function renderFcsum(){
       <span>canlı sicil: ${liveTxt}</span>
     </div>
     <div class="note">${m.disclaimer||""}</div></div>`;
+}
+
+function renderCsx(cs){
+  if(!cs){$("csx").innerHTML="";return;}
+  if(!cs.ready){
+    $("csx").innerHTML=`<div class="csx"><div class="h">📊 Kesitsel Öngörü <span class="badge st-weak">hazırlanıyor</span></div>
+      <div class="rec">${cs.status||"günlük model eğitiliyor… (ilk turda ~1-2 dk)"}</div></div>`;
+    return;
+  }
+  const r=cs.record||{};
+  const stClass=(r.dsr7!=null&&r.dsr7>0.95)?'st-ok':(r.bootstrap_p!=null&&r.bootstrap_p<0.05)?'st-mid':'st-weak';
+  const rec=`Market-nötr backtest (${r.horizon_days||5}g · ${r.n_rebalances||0} rebalans): `
+    +`Sharpe <b>${r.sharpe??'–'}</b> · DSR(7) <b>${r.dsr7??'–'}</b> · bootstrap p <b>${r.bootstrap_p??'–'}</b>`;
+  const rows=(cs.ranking||[]).map(it=>{
+    const lab=it.side==='long'?'GÜÇLÜ':it.side==='short'?'ZAYIF':'NÖTR';
+    const sgn=(it.signal>=0?'+':'')+(+it.signal).toFixed(2);
+    return `<div class="csrow"><span class="rk">${it.rank}</span>
+      <span class="tk">${it.ticker}</span><span class="mk">${it.market}</span>
+      <span class="sd ${it.side}">${lab}</span>
+      <span class="sc" style="color:${col(it.signal)}">${sgn}</span>
+      <span class="rg">${esc(it.regime||'')}</span></div>`;
+  }).join("");
+  $("csx").innerHTML=`<div class="csx">
+    <div class="h">📊 Kesitsel Öngörü <span class="badge ${stClass}">${esc(cs.status||'')}</span></div>
+    <div class="rec">${rec}</div>
+    <div class="cslist">${rows}</div>
+    <div class="rec" style="margin-top:9px">${esc(cs.note||"")}</div>
+  </div>`;
 }
 
 function render(){
