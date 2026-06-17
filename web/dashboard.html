@@ -125,6 +125,10 @@
   .act-izle{background:rgba(255,180,84,.16);color:var(--amber)} .act-bekle{background:var(--surface2);color:var(--faint)}
   .ptl2{font-size:11px;color:var(--muted);margin-top:3px;font-variant-numeric:tabular-nums;line-height:1.5}
   .ptl2 b{color:var(--text)} .ptl2 .up{color:var(--pos)} .ptl2 .dn{color:var(--neg)} .ptl2 .fa{color:var(--faint)}
+  .gaprow{display:flex;align-items:center;gap:8px;font-size:11.5px;padding:4px 0;border-bottom:1px solid var(--line)}
+  .gaprow .gtk{font-weight:700;min-width:52px}
+  .gaprow .glv{color:var(--muted);font-family:ui-monospace,monospace;font-size:10.5px}
+  .gaprow .ggap{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums}
   .cslist{margin-top:10px}
   .csrow{display:flex;align-items:center;gap:9px;padding:7px 0;border-top:1px solid var(--line);font-size:12.5px}
   .csrow .rk{color:var(--faint);font-size:10.5px;width:16px;text-align:right;font-family:ui-monospace,monospace}
@@ -162,6 +166,7 @@
   </div>
   <div id="csx"></div>
   <div id="predtable"></div>
+  <div id="gap"></div>
   <div id="dailychk"></div>
   <div id="daytrade"></div>
   <div id="fcsum"></div>
@@ -182,7 +187,7 @@ const pctf=v=>v==null?"–":Math.round(v*100)+"%";
 async function load(){
   $("ri").className="spin";
   try{
-    const [scores,st,dy,fc,cs,dt,dc,nf,pt]=await Promise.all([
+    const [scores,st,dy,fc,cs,dt,dc,nf,pt,gp]=await Promise.all([
       fetch("/api/scores?window=24h").then(r=>r.json()),
       fetch("/api/status").then(r=>r.json()),
       fetch("/api/daily").then(r=>r.json()),
@@ -192,12 +197,13 @@ async function load(){
       fetch("/api/dailycheck").then(r=>r.json()).catch(()=>null),
       fetch("/api/newsfeed").then(r=>r.json()).catch(()=>null),
       fetch("/api/predictions").then(r=>r.json()).catch(()=>null),
+      fetch("/api/gap").then(r=>r.json()).catch(()=>null),
     ]);
     SCORES=scores; $("daily").textContent=dy.text||"—";
     FC={meta:fc,items:{}}; if(fc&&fc.items) fc.items.forEach(i=>FC.items[i.ticker]=i);
     const t=st.last?new Date(st.last*1000).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"}):null;
     $("mU").textContent = st.running?"toplanıyor…":(t?("son: "+t):"ilk toplama sürüyor…");
-    renderNewsbanner(nf, st.sessions); renderCsx(cs); renderPredtable(pt, st.sessions); renderDailycheck(dc); renderDaytrade(dt); renderFcsum(); render();
+    renderNewsbanner(nf, st.sessions); renderCsx(cs); renderPredtable(pt, st.sessions); renderGap(gp); renderDailycheck(dc); renderDaytrade(dt); renderFcsum(); render();
   }catch(e){
     $("list").innerHTML='<div class="state"><h3>Sunucuya ulaşılamadı</h3><p>server.py çalışıyor mu? Terminali kontrol et.</p></div>';
   }finally{$("ri").className="";}
@@ -403,6 +409,31 @@ function renderPredtable(pt, sessions){
     ${status}
     <div class="ptlist">${cards}</div>
     <div class="rec" style="margin-top:7px;color:var(--faint)">${esc(pt.note||'')}</div>
+  </div>`;
+}
+
+function renderGap(g){
+  const box=$("gap");
+  if(!g||!g.rows||!g.rows.length){box.innerHTML="";return;}
+  const us=(g.sessions&&g.sessions.us)||'';
+  const inSession=us.indexOf('düzenli seans')>=0;
+  const usRows=g.rows.filter(r=>r.market!=='BIST');
+  const sig=usRows.filter(r=>Math.abs(r.gap_pct)>=0.3);
+  const top=sig.filter(r=>r.gap_pct>0).slice(0,8);
+  const bot=sig.filter(r=>r.gap_pct<0).reverse().slice(0,6);
+  const row=r=>`<div class="gaprow"><span class="gtk">${esc(r.ticker)}</span>
+    <span class="glv">$${r.close} → $${r.ext}</span>
+    <span class="ggap" style="color:${r.gap_pct>0?'var(--pos)':'var(--neg)'}">${r.gap_pct>=0?'+':''}${r.gap_pct}%</span></div>`;
+  const warn=inSession
+    ? `<div class="ptstatus" style="background:rgba(255,180,84,.14);color:var(--amber)">⚠️ Seans AÇIK → gap ≈0 (anlamlı değil). Gap, seans-dışı (after-hours/pre-market) oluşur.</div>`
+    : (sig.length? '' : `<div class="rec">Şu an belirgin gap yok (uzatılmış seans sakin).</div>`);
+  box.innerHTML=`<div class="dtwrap" style="border-color:rgba(124,92,255,.22);background:linear-gradient(135deg,#141019,#1b1426)">
+    <div class="h">🌅 Açılış Gap · after-hours/pre-market <span class="badge st-mid">${sig.length} hareketli</span></div>
+    <div class="rec" style="color:var(--faint)">Seans: ABD ${esc(us)} · kapanış → uzatılmış-seans fiyatı = açılış sıçraması</div>
+    ${warn}
+    ${top.length?'<div class="dth" style="color:var(--pos)">▲ Yukarı gap adayları</div>'+top.map(row).join(''):''}
+    ${bot.length?'<div class="dth" style="color:var(--neg);margin-top:6px">▼ Aşağı gap</div>'+bot.map(row).join(''):''}
+    <div class="rec" style="margin-top:7px;color:var(--faint)">${esc(g.note||'')}</div>
   </div>`;
 }
 

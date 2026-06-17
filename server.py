@@ -465,6 +465,31 @@ def predictions_api():
     }
 
 
+@app.get("/api/gap")
+def gap_api():
+    """Açılış GAP tablosu: son uzatılmış-seans fiyatı (after-hours/pre-market) vs resmi kapanış →
+    açılışta beklenen sıçrama. SADECE seans dışında anlamlı; ince/sönebilir; garanti değil."""
+    conn = db.connect()
+    rows = []
+    for t in TICKERS:
+        d1 = [r for r in db.get_prices(conn, t, "1d", limit=2) if r["close"] is not None]
+        h60 = [r for r in db.get_prices(conn, t, "60m", limit=6) if r["close"] is not None]
+        if not d1 or not h60:
+            continue
+        close = float(d1[-1]["close"])
+        ext = float(h60[-1]["close"])
+        gap = (ext - close) / close * 100 if close else 0.0
+        rows.append({"ticker": t, "market": TICKER_MARKET.get(t, "US"),
+                     "close": round(close, 2), "ext": round(ext, 2),
+                     "gap_pct": round(gap, 2), "ext_ts": h60[-1]["ts"]})
+    conn.close()
+    rows.sort(key=lambda r: r["gap_pct"], reverse=True)
+    return {"rows": rows, "count": len(rows), "sessions": _sessions(),
+            "note": "Gap = son uzatılmış-seans fiyatı (after-hours/pre-market) vs resmi kapanış. "
+                    "Açılışta beklenen sıçrama; SADECE seans DIŞINDA anlamlı (BIST'te yok). İnce, "
+                    "açılışa kadar sönebilir; Fed/makro tersse gap kapanır. GARANTİ DEĞİL."}
+
+
 def _resample_weekly(candles: list[dict]) -> list[dict]:
     """Günlük mumları ISO-haftaya indir (OHLC: ilk açılış, max yüksek, min düşük, son kapanış)."""
     import datetime
