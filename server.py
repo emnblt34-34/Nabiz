@@ -126,6 +126,9 @@ def _cs_cycle():
         return
     try:
         conn = db.connect()
+        # Günlük fiyatı HER döngüde tazele (seans içinde forming-bar = canlı fiyat) — tahmin
+        # tablosu/sıralama bayatlamasın. Önceden yalnız 6 saatlik retrain'de tazeleniyordu (bug).
+        prices.update_prices(conn, list(TICKERS), period="5d", interval="1d")
         _cs["ranking"] = cross_section.rank_now(conn, _cs["model"], list(TICKERS))
         # (b) forward sentiment ablation: olgunlaşanı sonuçla + bugünü logla (1/gün)
         cross_section.resolve_ablation(conn)
