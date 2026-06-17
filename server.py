@@ -419,6 +419,49 @@ def crosssection():
     }
 
 
+@app.get("/api/predictions")
+def predictions_api():
+    """Konsolide TAHMİN TABLOSU: her hisse · beklenen % hareket (yön+belirsizlik) · 1 gün ve 1 hafta.
+    Beklenen % = göreli sinyal × volatilite × √ufuk (mum projeksiyonuyla AYNI math). GARANTİ DEĞİL —
+    model eğilimi + belirsizlik bandı; düzenli seans kapanışıyla yargılanır (Stage 19)."""
+    import statistics
+    conn = db.connect()
+    rows = []
+    for it in _cs["ranking"]:
+        t = it["ticker"]
+        closes, _ = fx.usd_series(conn, t, "1d")
+        if len(closes) < 25:
+            continue
+        rets = [(closes[i] - closes[i - 1]) / closes[i - 1]
+                for i in range(1, len(closes)) if closes[i - 1]]
+        vol = statistics.pstdev(rets[-20:]) if len(rets) >= 5 else 0.02
+        csig = max(-1.0, min(1.0, it["signal"]))
+
+        def _at(h):
+            d = round(csig * vol * (h ** 0.5) * 100, 2)
+            b = round(vol * (h ** 0.5) * 100, 2)
+            return d, b, ("up" if d > b * 0.12 else "down" if d < -b * 0.12 else "neutral")
+
+        d1, b1, dir1 = _at(1)
+        d5, b5, dir5 = _at(5)
+        rows.append({
+            "ticker": t, "market": it.get("market"), "signal": it.get("signal"),
+            "conf_label": it.get("conf_label"), "side": it.get("side"),
+            "price": round(closes[-1], 2),
+            "d1_pct": d1, "d1_band": b1, "d1_dir": dir1,
+            "w1_pct": d5, "w1_band": b5, "w1_dir": dir5,
+        })
+    conn.close()
+    rows.sort(key=lambda r: r["w1_pct"], reverse=True)  # en güçlü yukarı → en zayıf aşağı
+    return {
+        "rows": rows, "count": len(rows),
+        "note": "Beklenen % = göreli güç sinyali × volatilite × √ufuk · 1 gün ve 1 hafta (5 işlem günü). "
+                "Saatlik kasıtlı yok (≈yazı-tura, Stage 13). GARANTİ DEĞİL — eğilim + belirsizlik bandı; "
+                "düzenli seans kapanışıyla yargılanır.",
+        "disclaimer": "Yatırım tavsiyesi değildir; göreli sıralamadan türetilmiş model eğilimidir.",
+    }
+
+
 def _resample_weekly(candles: list[dict]) -> list[dict]:
     """Günlük mumları ISO-haftaya indir (OHLC: ilk açılış, max yüksek, min düşük, son kapanış)."""
     import datetime

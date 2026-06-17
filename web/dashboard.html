@@ -113,6 +113,13 @@
   .nbtk{font-weight:700} .nbsrc{color:var(--faint)} .nbtime{color:var(--faint);margin-left:auto}
   .nbtext{font-size:11.5px;color:var(--text);line-height:1.45;margin:3px 0 2px}
   .nbinterp{font-size:10.5px;color:var(--amber);line-height:1.4}
+  .pthead,.ptrow{display:grid;grid-template-columns:22px 1fr 92px 92px 44px;gap:6px;align-items:center}
+  .pthead{font-size:9.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.04em;padding:0 0 4px;border-bottom:1px solid var(--line)}
+  .ptrow{font-size:11.5px;padding:6px 0;border-bottom:1px solid var(--line)}
+  .ptrow .pttk{font-weight:700} .ptrow .ptmk{font-size:9px;color:var(--faint);margin-left:3px}
+  .ptcell{font-variant-numeric:tabular-nums;font-weight:600} .ptcell .ptb{color:var(--faint);font-weight:400;font-size:9.5px}
+  .ptcf{font-size:9px;padding:1px 5px;border-radius:6px;font-weight:700;text-align:center}
+  .pti{color:var(--faint);font-size:10px}
   .cslist{margin-top:10px}
   .csrow{display:flex;align-items:center;gap:9px;padding:7px 0;border-top:1px solid var(--line);font-size:12.5px}
   .csrow .rk{color:var(--faint);font-size:10.5px;width:16px;text-align:right;font-family:ui-monospace,monospace}
@@ -149,6 +156,7 @@
     <div class="meta"><span><b id="mT">0</b> hisse</span><span><b id="mI">0</b> içerik</span><span id="mU">başlatılıyor…</span></div>
   </div>
   <div id="csx"></div>
+  <div id="predtable"></div>
   <div id="dailychk"></div>
   <div id="daytrade"></div>
   <div id="fcsum"></div>
@@ -169,7 +177,7 @@ const pctf=v=>v==null?"–":Math.round(v*100)+"%";
 async function load(){
   $("ri").className="spin";
   try{
-    const [scores,st,dy,fc,cs,dt,dc,nf]=await Promise.all([
+    const [scores,st,dy,fc,cs,dt,dc,nf,pt]=await Promise.all([
       fetch("/api/scores?window=24h").then(r=>r.json()),
       fetch("/api/status").then(r=>r.json()),
       fetch("/api/daily").then(r=>r.json()),
@@ -178,12 +186,13 @@ async function load(){
       fetch("/api/daytrade").then(r=>r.json()).catch(()=>null),
       fetch("/api/dailycheck").then(r=>r.json()).catch(()=>null),
       fetch("/api/newsfeed").then(r=>r.json()).catch(()=>null),
+      fetch("/api/predictions").then(r=>r.json()).catch(()=>null),
     ]);
     SCORES=scores; $("daily").textContent=dy.text||"—";
     FC={meta:fc,items:{}}; if(fc&&fc.items) fc.items.forEach(i=>FC.items[i.ticker]=i);
     const t=st.last?new Date(st.last*1000).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"}):null;
     $("mU").textContent = st.running?"toplanıyor…":(t?("son: "+t):"ilk toplama sürüyor…");
-    renderNewsbanner(nf, st.sessions); renderCsx(cs); renderDailycheck(dc); renderDaytrade(dt); renderFcsum(); render();
+    renderNewsbanner(nf, st.sessions); renderCsx(cs); renderPredtable(pt); renderDailycheck(dc); renderDaytrade(dt); renderFcsum(); render();
   }catch(e){
     $("list").innerHTML='<div class="state"><h3>Sunucuya ulaşılamadı</h3><p>server.py çalışıyor mu? Terminali kontrol et.</p></div>';
   }finally{$("ri").className="";}
@@ -333,6 +342,28 @@ function renderNewsbanner(nf, sessions){
     </div>`;
   }).join('');
   box.innerHTML=sess+`<div class="newsbanner"><div class="nbh">🔔 Anlık Haberler <span class="badge st-mid">${nf.count||nf.items.length}</span></div>${items}<div class="rec" style="color:var(--faint);font-size:10px;margin-top:6px">${esc(nf.note||'')}</div></div>`;
+}
+
+function renderPredtable(pt){
+  const box=$("predtable");
+  if(!pt||!pt.rows||!pt.rows.length){box.innerHTML="";return;}
+  const arw=d=>d==='up'?'▲':d==='down'?'▼':'▬', cl=d=>d==='up'?'var(--pos)':d==='down'?'var(--neg)':'var(--muted)';
+  const cfc=l=>l==='yüksek'?'cf-hi':l==='orta'?'cf-mid':'cf-lo';
+  const cell=(p,b,d)=>`<span class="ptcell" style="color:${cl(d)}">${arw(d)} ${p>=0?'+':''}${p}% <span class="ptb">±${b}%</span></span>`;
+  const rows=pt.rows.map((r,i)=>`<div class="ptrow">
+    <span class="pti">${i+1}</span>
+    <span><span class="pttk">${esc(r.ticker)}</span><span class="ptmk">${r.market||''}</span></span>
+    ${cell(r.d1_pct,r.d1_band,r.d1_dir)}
+    ${cell(r.w1_pct,r.w1_band,r.w1_dir)}
+    <span class="ptcf ${cfc(r.conf_label)}">${esc(r.conf_label||'')}</span>
+  </div>`).join('');
+  box.innerHTML=`<div class="csx">
+    <div class="h">📈 Tahmin Tablosu <span class="badge st-mid">${pt.count} hisse</span></div>
+    <div class="rec" style="color:var(--faint);margin-bottom:6px">Hangi hisse · hangi ufukta · beklenen % hareket (yön + belirsizlik bandı). En güçlü → en zayıf.</div>
+    <div class="pthead"><span>#</span><span>Hisse</span><span>1 gün</span><span>1 hafta</span><span>güven</span></div>
+    <div class="ptlist">${rows}</div>
+    <div class="rec" style="margin-top:7px;color:var(--faint)">${esc(pt.note||'')}</div>
+  </div>`;
 }
 
 function render(){
