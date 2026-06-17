@@ -113,13 +113,18 @@
   .nbtk{font-weight:700} .nbsrc{color:var(--faint)} .nbtime{color:var(--faint);margin-left:auto}
   .nbtext{font-size:11.5px;color:var(--text);line-height:1.45;margin:3px 0 2px}
   .nbinterp{font-size:10.5px;color:var(--amber);line-height:1.4}
-  .pthead,.ptrow{display:grid;grid-template-columns:22px 1fr 92px 92px 44px;gap:6px;align-items:center}
-  .pthead{font-size:9.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.04em;padding:0 0 4px;border-bottom:1px solid var(--line)}
-  .ptrow{font-size:11.5px;padding:6px 0;border-bottom:1px solid var(--line)}
-  .ptrow .pttk{font-weight:700} .ptrow .ptmk{font-size:9px;color:var(--faint);margin-left:3px}
-  .ptcell{font-variant-numeric:tabular-nums;font-weight:600} .ptcell .ptb{color:var(--faint);font-weight:400;font-size:9.5px}
-  .ptcf{font-size:9px;padding:1px 5px;border-radius:6px;font-weight:700;text-align:center}
-  .pti{color:var(--faint);font-size:10px}
+  .ptrules{font-size:10.5px;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:7px 10px;line-height:1.55;margin-bottom:8px}
+  .ptrules b{color:var(--text)}
+  .ptstatus{font-size:11.5px;font-weight:600;padding:6px 10px;border-radius:9px;margin-bottom:8px}
+  .ptcard{padding:7px 0;border-bottom:1px solid var(--line)}
+  .ptl1{display:flex;align-items:center;gap:7px;font-size:12px}
+  .ptl1 .pti{color:var(--faint);font-size:10px;min-width:18px}
+  .ptl1 .pttk{font-weight:700} .ptl1 .ptmk{font-size:9px;color:var(--faint)}
+  .ptact{margin-left:auto;font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:6px}
+  .act-al{background:rgba(54,211,153,.18);color:var(--pos)} .act-sat{background:rgba(255,93,115,.18);color:var(--neg)}
+  .act-izle{background:rgba(255,180,84,.16);color:var(--amber)} .act-bekle{background:var(--surface2);color:var(--faint)}
+  .ptl2{font-size:11px;color:var(--muted);margin-top:3px;font-variant-numeric:tabular-nums;line-height:1.5}
+  .ptl2 b{color:var(--text)} .ptl2 .up{color:var(--pos)} .ptl2 .dn{color:var(--neg)} .ptl2 .fa{color:var(--faint)}
   .cslist{margin-top:10px}
   .csrow{display:flex;align-items:center;gap:9px;padding:7px 0;border-top:1px solid var(--line);font-size:12.5px}
   .csrow .rk{color:var(--faint);font-size:10.5px;width:16px;text-align:right;font-family:ui-monospace,monospace}
@@ -344,24 +349,46 @@ function renderNewsbanner(nf, sessions){
   box.innerHTML=sess+`<div class="newsbanner"><div class="nbh">🔔 Anlık Haberler <span class="badge st-mid">${nf.count||nf.items.length}</span></div>${items}<div class="rec" style="color:var(--faint);font-size:10px;margin-top:6px">${esc(nf.note||'')}</div></div>`;
 }
 
+function nextCloseLocal(market){
+  // Düzenli seans KAPANIŞI: BIST 18:00 TRT (15 UTC), ABD 16:00 ET (20 UTC, yaz/EDT).
+  const now=new Date(), ch=market==='BIST'?15:20;
+  let d=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate(),ch,0,0));
+  if(d<=now) d.setUTCDate(d.getUTCDate()+1);
+  while(d.getUTCDay()===0||d.getUTCDay()===6) d.setUTCDate(d.getUTCDate()+1);
+  return d.toLocaleString('tr-TR',{weekday:'short',hour:'2-digit',minute:'2-digit'});
+}
 function renderPredtable(pt){
   const box=$("predtable");
   if(!pt||!pt.rows||!pt.rows.length){box.innerHTML="";return;}
-  const arw=d=>d==='up'?'▲':d==='down'?'▼':'▬', cl=d=>d==='up'?'var(--pos)':d==='down'?'var(--neg)':'var(--muted)';
-  const cfc=l=>l==='yüksek'?'cf-hi':l==='orta'?'cf-mid':'cf-lo';
-  const cell=(p,b,d)=>`<span class="ptcell" style="color:${cl(d)}">${arw(d)} ${p>=0?'+':''}${p}% <span class="ptb">±${b}%</span></span>`;
-  const rows=pt.rows.map((r,i)=>`<div class="ptrow">
-    <span class="pti">${i+1}</span>
-    <span><span class="pttk">${esc(r.ticker)}</span><span class="ptmk">${r.market||''}</span></span>
-    ${cell(r.d1_pct,r.d1_band,r.d1_dir)}
-    ${cell(r.w1_pct,r.w1_band,r.w1_dir)}
-    <span class="ptcf ${cfc(r.conf_label)}">${esc(r.conf_label||'')}</span>
-  </div>`).join('');
+  const fmtp=v=>v>=1000?v.toFixed(0):v>=1?v.toFixed(2):v.toFixed(4);
+  let nAl=0,nSat=0;
+  const cards=pt.rows.map((r,i)=>{
+    const pr=+r.price, d=r.d1_pct/100, b=r.d1_band/100;
+    const tgt=pr*(1+d), up=pr*(1+d+b), dn=pr*(1+d-b);          // merkez hedef + 1σ aralık (FİYAT)
+    const snr=r.d1_band?Math.abs(r.d1_pct/r.d1_band):0;
+    let act='BEKLE',ac='act-bekle';
+    if(r.conf_label==='yüksek'&&snr>0.5){ act=r.side==='long'?'AL':'SAT'; ac=r.side==='long'?'act-al':'act-sat'; if(r.side==='long')nAl++;else nSat++; }
+    else if(r.conf_label==='orta'&&snr>=0.45&&r.side!=='neutral'){ act=r.side==='long'?'İZLE ▲':'İZLE ▼'; ac='act-izle'; }
+    const cfc=r.conf_label==='yüksek'?'cf-hi':r.conf_label==='orta'?'cf-mid':'cf-lo';
+    const dirc=r.d1_dir==='up'?'up':r.d1_dir==='down'?'dn':'fa';
+    return `<div class="ptcard">
+      <div class="ptl1"><span class="pti">${i+1}</span><span class="pttk">${esc(r.ticker)}</span><span class="ptmk">${r.market||''}</span>
+        <span class="cf ${cfc}" style="font-size:9px;padding:1px 5px;border-radius:6px">${esc(r.conf_label||'')}</span>
+        <span class="ptact ${ac}">${act}</span></div>
+      <div class="ptl2">Fiyat <b>$${fmtp(pr)}</b> → 1g hedef <b class="${dirc}">$${fmtp(tgt)}</b> · aralık <span class="dn">$${fmtp(dn)}</span>–<span class="up">$${fmtp(up)}</span>
+        <span class="fa">· 1hafta ${r.w1_pct>=0?'+':''}${r.w1_pct}% · S/N ${snr.toFixed(2)} · kapanış ~${nextCloseLocal(r.market)}</span></div>
+    </div>`;
+  }).join('');
+  const noTrade = (nAl+nSat)===0;
+  const status = noTrade
+    ? `<div class="ptstatus" style="background:rgba(255,180,84,.14);color:var(--amber)">⚠️ Şu an net AL/SAT sinyali YOK — yüksek güven 0. Çoğu hisse <b>BEKLE</b>; birkaçı zayıf <b>İZLE</b>. Tek-isim spekülasyonu için uygun değil.</div>`
+    : `<div class="ptstatus" style="background:rgba(54,211,153,.14);color:var(--pos)">✅ ${nAl} AL · ${nSat} SAT sinyali (yüksek güven). Yine de küçük poz + stop.</div>`;
   box.innerHTML=`<div class="csx">
-    <div class="h">📈 Tahmin Tablosu <span class="badge st-mid">${pt.count} hisse</span></div>
-    <div class="rec" style="color:var(--faint);margin-bottom:6px">Hangi hisse · hangi ufukta · beklenen % hareket (yön + belirsizlik bandı). En güçlü → en zayıf.</div>
-    <div class="pthead"><span>#</span><span>Hisse</span><span>1 gün</span><span>1 hafta</span><span>güven</span></div>
-    <div class="ptlist">${rows}</div>
+    <div class="h">📈 Tahmin & Al/Sat <span class="badge st-mid">${pt.count} hisse</span></div>
+    <div class="ptrules"><b>Kurallar (borsacın notu):</b> "günlük" = <b>düzenli seans kapanışı</b> (24 saat DEĞİL; ABD 16:00 ET / BIST 18:00). Fiyat hedefi = merkez eğilim; <b>aralık = 1σ belirsizlik</b> (~%68 ihtimalle bu bandda, garanti değil).<br>
+    ✅ <b>İşlem zamanı:</b> seans İÇİNDE (likidite), çok-GÜN tut (sinyal 5-günlük). · ❌ <b>YAPMA:</b> gün-içi scalp (≈yazı-tura), "düşük/orta+zayıf S/N" isimde büyük poz, ön/sonrası seansta büyük emir.</div>
+    ${status}
+    <div class="ptlist">${cards}</div>
     <div class="rec" style="margin-top:7px;color:var(--faint)">${esc(pt.note||'')}</div>
   </div>`;
 }
