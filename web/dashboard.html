@@ -357,6 +357,11 @@ function nextCloseLocal(market){
   while(d.getUTCDay()===0||d.getUTCDay()===6) d.setUTCDate(d.getUTCDate()+1);
   return d.toLocaleString('tr-TR',{weekday:'short',hour:'2-digit',minute:'2-digit'});
 }
+function nextTradingDay(n){  // bugünden n işlem günü ileri (hafta sonu atlanır)
+  let d=new Date(), a=0;
+  while(a<n){ d.setDate(d.getDate()+1); const g=d.getDay(); if(g!==0&&g!==6) a++; }
+  return d.toLocaleDateString('tr-TR',{day:'2-digit',month:'short'});
+}
 function renderPredtable(pt){
   const box=$("predtable");
   if(!pt||!pt.rows||!pt.rows.length){box.innerHTML="";return;}
@@ -375,8 +380,8 @@ function renderPredtable(pt){
       <div class="ptl1"><span class="pti">${i+1}</span><span class="pttk">${esc(r.ticker)}</span><span class="ptmk">${r.market||''}</span>
         <span class="cf ${cfc}" style="font-size:9px;padding:1px 5px;border-radius:6px">${esc(r.conf_label||'')}</span>
         <span class="ptact ${ac}">${act}</span></div>
-      <div class="ptl2">Fiyat <b>$${fmtp(pr)}</b> → 1g hedef <b class="${dirc}">$${fmtp(tgt)}</b> · aralık <span class="dn">$${fmtp(dn)}</span>–<span class="up">$${fmtp(up)}</span>
-        <span class="fa">· 1hafta ${r.w1_pct>=0?'+':''}${r.w1_pct}% · S/N ${snr.toFixed(2)} · kapanış ~${nextCloseLocal(r.market)}</span></div>
+      <div class="ptl2">Canlı <b>$${fmtp(pr)}</b> → <b class="${dirc}">$${fmtp(tgt)}</b> <span class="fa">≈1 işlem günü (${nextTradingDay(1)})</span> · aralık <span class="dn">$${fmtp(dn)}</span>–<span class="up">$${fmtp(up)}</span>
+        <span class="fa">· ≈1 hafta (${nextTradingDay(5)}) ${r.w1_pct>=0?'+':''}${r.w1_pct}% · S/N ${snr.toFixed(2)}</span></div>
     </div>`;
   }).join('');
   const noTrade = (nAl+nSat)===0;
@@ -385,8 +390,8 @@ function renderPredtable(pt){
     : `<div class="ptstatus" style="background:rgba(54,211,153,.14);color:var(--pos)">✅ ${nAl} AL · ${nSat} SAT sinyali (yüksek güven). Yine de küçük poz + stop.</div>`;
   box.innerHTML=`<div class="csx">
     <div class="h">📈 Tahmin & Al/Sat <span class="badge st-mid">${pt.count} hisse</span></div>
-    <div class="ptrules"><b>Kurallar (borsacın notu):</b> "günlük" = <b>düzenli seans kapanışı</b> (24 saat DEĞİL; ABD 16:00 ET / BIST 18:00). Fiyat hedefi = merkez eğilim; <b>aralık = 1σ belirsizlik</b> (~%68 ihtimalle bu bandda, garanti değil).<br>
-    ✅ <b>İşlem zamanı:</b> seans İÇİNDE (likidite), çok-GÜN tut (sinyal 5-günlük). · ❌ <b>YAPMA:</b> gün-içi scalp (≈yazı-tura), "düşük/orta+zayıf S/N" isimde büyük poz, ön/sonrası seansta büyük emir.</div>
+    <div class="ptrules"><b>Kurallar (borsacın notu):</b> Hedefler <b>CANLI fiyattan İLERİYE</b>. <b>"1 işlem günü"</b> = bir sonraki tam seans → seans açıkken ≈ <b>YARINKİ kapanış</b> (BUGÜNKÜ kapanış DEĞİL); "1 hafta" ≈ 5 işlem günü. Merkez = eğilim, <b>aralık = 1σ</b> (~%68, garanti değil). ⚠️ 1-gün ≈ yazı-tura (zayıf); asıl sinyal <b>5-gün</b>.<br>
+    ✅ <b>İşlem:</b> seans içinde, çok-GÜN tut. · ❌ <b>YAPMA:</b> gün-içi scalp, zayıf-S/N büyük poz, ön/sonrası büyük emir. · Bugünkü kapanış tahmini için ayrıca sor ("bugün kapanış aralığı").</div>
     ${status}
     <div class="ptlist">${cards}</div>
     <div class="rec" style="margin-top:7px;color:var(--faint)">${esc(pt.note||'')}</div>
