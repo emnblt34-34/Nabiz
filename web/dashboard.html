@@ -357,9 +357,15 @@ function nextCloseLocal(market){
   while(d.getUTCDay()===0||d.getUTCDay()===6) d.setUTCDate(d.getUTCDate()+1);
   return d.toLocaleString('tr-TR',{weekday:'short',hour:'2-digit',minute:'2-digit'});
 }
-function nextTradingDay(n){  // bugünden n işlem günü ileri (hafta sonu atlanır)
-  let d=new Date(), a=0;
-  while(a<n){ d.setDate(d.getDate()+1); const g=d.getDay(); if(g!==0&&g!==6) a++; }
+function nextTradingDay(n){  // n. seans KAPANIŞ tarihi. Bugün haftaiçi ve henüz kapanmadıysa
+  // (ABD 20:00 UTC) BUGÜN 1. kapanış sayılır — açılış-öncesi pencerede yanlış güne kaymayı önler.
+  const now=new Date();
+  let d=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate(),20,0,0)), c=0;
+  while(c<n){
+    const g=d.getUTCDay();
+    if(g>=1&&g<=5&&d.getTime()>now.getTime()){ c++; if(c===n) break; }
+    d=new Date(d.getTime()+86400000); d.setUTCHours(20,0,0,0);
+  }
   return d.toLocaleDateString('tr-TR',{day:'2-digit',month:'short'});
 }
 function renderPredtable(pt, sessions){
