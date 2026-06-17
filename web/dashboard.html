@@ -197,7 +197,7 @@ async function load(){
     FC={meta:fc,items:{}}; if(fc&&fc.items) fc.items.forEach(i=>FC.items[i.ticker]=i);
     const t=st.last?new Date(st.last*1000).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"}):null;
     $("mU").textContent = st.running?"toplanıyor…":(t?("son: "+t):"ilk toplama sürüyor…");
-    renderNewsbanner(nf, st.sessions); renderCsx(cs); renderPredtable(pt); renderDailycheck(dc); renderDaytrade(dt); renderFcsum(); render();
+    renderNewsbanner(nf, st.sessions); renderCsx(cs); renderPredtable(pt, st.sessions); renderDailycheck(dc); renderDaytrade(dt); renderFcsum(); render();
   }catch(e){
     $("list").innerHTML='<div class="state"><h3>Sunucuya ulaşılamadı</h3><p>server.py çalışıyor mu? Terminali kontrol et.</p></div>';
   }finally{$("ri").className="";}
@@ -362,10 +362,12 @@ function nextTradingDay(n){  // bugünden n işlem günü ileri (hafta sonu atla
   while(a<n){ d.setDate(d.getDate()+1); const g=d.getDay(); if(g!==0&&g!==6) a++; }
   return d.toLocaleDateString('tr-TR',{day:'2-digit',month:'short'});
 }
-function renderPredtable(pt){
+function renderPredtable(pt, sessions){
   const box=$("predtable");
   if(!pt||!pt.rows||!pt.rows.length){box.innerHTML="";return;}
   const fmtp=v=>v>=1000?v.toFixed(0):v>=1?v.toFixed(2):v.toFixed(4);
+  const sess=sessions||{};
+  const plab=m=>{ const s=(m==='BIST')?sess.bist:sess.us; return (s&&s.indexOf('düzenli seans')>=0)?'Canlı':'Kapanış'; };
   let nAl=0,nSat=0;
   const cards=pt.rows.map((r,i)=>{
     const pr=+r.price, d=r.d1_pct/100, b=r.d1_band/100;
@@ -380,7 +382,7 @@ function renderPredtable(pt){
       <div class="ptl1"><span class="pti">${i+1}</span><span class="pttk">${esc(r.ticker)}</span><span class="ptmk">${r.market||''}</span>
         <span class="cf ${cfc}" style="font-size:9px;padding:1px 5px;border-radius:6px">${esc(r.conf_label||'')}</span>
         <span class="ptact ${ac}">${act}</span></div>
-      <div class="ptl2">Canlı <b>$${fmtp(pr)}</b> → <b class="${dirc}">$${fmtp(tgt)}</b> <span class="fa">≈1 işlem günü (${nextTradingDay(1)})</span> · aralık <span class="dn">$${fmtp(dn)}</span>–<span class="up">$${fmtp(up)}</span>
+      <div class="ptl2">${plab(r.market)} <b>$${fmtp(pr)}</b> → <b class="${dirc}">$${fmtp(tgt)}</b> <span class="fa">≈1 işlem günü (${nextTradingDay(1)})</span> · aralık <span class="dn">$${fmtp(dn)}</span>–<span class="up">$${fmtp(up)}</span>
         <span class="fa">· ≈1 hafta (${nextTradingDay(5)}) ${r.w1_pct>=0?'+':''}${r.w1_pct}% · S/N ${snr.toFixed(2)}</span></div>
     </div>`;
   }).join('');
