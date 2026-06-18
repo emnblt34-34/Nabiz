@@ -467,27 +467,36 @@ def predictions_api():
 
 @app.get("/api/gap")
 def gap_api():
-    """Açılış GAP tablosu: son uzatılmış-seans fiyatı (after-hours/pre-market) vs resmi kapanış →
-    açılışta beklenen sıçrama. SADECE seans dışında anlamlı; ince/sönebilir; garanti değil."""
+    """Açılış KURULUMU (gün-içi): resmi kapanış → açılış-tahmin (after-hours/pre-market) + GAP%,
+    ayrıca YUKARI hedef (10g direnç) ve AŞAĞI destek (10g dip) + gün-içi ATR. Yön garanti değil;
+    seviyeler teknik. SADECE seans dışında 'açılış' anlamlı (BIST'te after-hours yok)."""
     conn = db.connect()
     rows = []
     for t in TICKERS:
-        d1 = [r for r in db.get_prices(conn, t, "1d", limit=2) if r["close"] is not None]
+        d1 = [r for r in db.get_prices(conn, t, "1d", limit=20)
+              if r["close"] is not None and r["high"] is not None and r["low"] is not None]
         h60 = [r for r in db.get_prices(conn, t, "60m", limit=6) if r["close"] is not None]
-        if not d1 or not h60:
+        if len(d1) < 12 or not h60:
             continue
-        close = float(d1[-1]["close"])
+        h = [float(r["high"]) for r in d1]
+        lo = [float(r["low"]) for r in d1]
+        c = [float(r["close"]) for r in d1]
+        close = c[-1]
         ext = float(h60[-1]["close"])
         gap = (ext - close) / close * 100 if close else 0.0
+        trs = [max(h[i] - lo[i], abs(h[i] - c[i - 1]), abs(lo[i] - c[i - 1])) for i in range(1, len(c))]
+        atr = sum(trs[-14:]) / 14 if len(trs) >= 14 else (sum(trs) / len(trs) if trs else 0.0)
         rows.append({"ticker": t, "market": TICKER_MARKET.get(t, "US"),
-                     "close": round(close, 2), "ext": round(ext, 2),
-                     "gap_pct": round(gap, 2), "ext_ts": h60[-1]["ts"]})
+                     "close": round(close, 2), "ext": round(ext, 2), "gap_pct": round(gap, 2),
+                     "up_target": round(max(h[-10:]), 2), "up_stretch": round(ext + atr, 2),
+                     "dn_support": round(min(lo[-10:]), 2), "dn_atr": round(ext - atr, 2),
+                     "atr_pct": round(atr / ext * 100, 2) if ext else 0.0, "ext_ts": h60[-1]["ts"]})
     conn.close()
     rows.sort(key=lambda r: r["gap_pct"], reverse=True)
     return {"rows": rows, "count": len(rows), "sessions": _sessions(),
-            "note": "Gap = son uzatılmış-seans fiyatı (after-hours/pre-market) vs resmi kapanış. "
-                    "Açılışta beklenen sıçrama; SADECE seans DIŞINDA anlamlı (BIST'te yok). İnce, "
-                    "açılışa kadar sönebilir; Fed/makro tersse gap kapanır. GARANTİ DEĞİL."}
+            "note": "Açılış-tahmin = son uzatılmış-seans fiyatı. Yukarı hedef=10g direnç, aşağı=10g dip. "
+                    "YÖN garanti değil (gün-içi ≈yazı-tura); seviyeler teknik. 16:30 sonrası canlı "
+                    "haber+fiyatla rafine edilir. Açılışa kadar sönebilir; Fed/makro tersse gap kapanır."}
 
 
 def _resample_weekly(candles: list[dict]) -> list[dict]:

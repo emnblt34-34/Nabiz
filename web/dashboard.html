@@ -129,6 +129,9 @@
   .gaprow .gtk{font-weight:700;min-width:52px}
   .gaprow .glv{color:var(--muted);font-family:ui-monospace,monospace;font-size:10.5px}
   .gaprow .ggap{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums}
+  .gapcard{padding:5px 0;border-bottom:1px solid var(--line)} .gapcard .gaprow{border:0;padding:0}
+  .gaplv{font-size:10.5px;color:var(--muted);margin-top:2px;font-family:ui-monospace,monospace}
+  .gaplv .up{color:var(--pos)} .gaplv .dn{color:var(--neg)} .gaplv .fa{color:var(--faint)}
   .cslist{margin-top:10px}
   .csrow{display:flex;align-items:center;gap:9px;padding:7px 0;border-top:1px solid var(--line);font-size:12.5px}
   .csrow .rk{color:var(--faint);font-size:10.5px;width:16px;text-align:right;font-family:ui-monospace,monospace}
@@ -428,15 +431,18 @@ function renderGap(g){
   const sig=usRows.filter(r=>Math.abs(r.gap_pct)>=0.3);
   const top=sig.filter(r=>r.gap_pct>0).slice(0,8);
   const bot=sig.filter(r=>r.gap_pct<0).reverse().slice(0,6);
-  const row=r=>`<div class="gaprow"><span class="gtk">${esc(r.ticker)}</span>
-    <span class="glv">$${r.close} → $${r.ext}</span>
-    <span class="ggap" style="color:${r.gap_pct>0?'var(--pos)':'var(--neg)'}">${r.gap_pct>=0?'+':''}${r.gap_pct}%</span></div>`;
+  const row=r=>`<div class="gapcard">
+    <div class="gaprow"><span class="gtk">${esc(r.ticker)}</span>
+      <span class="glv">kapanış $${r.close} → açılış $${r.ext}</span>
+      <span class="ggap" style="color:${r.gap_pct>0?'var(--pos)':'var(--neg)'}">${r.gap_pct>=0?'+':''}${r.gap_pct}%</span></div>
+    <div class="gaplv">🔼 hedef <b class="up">$${r.up_target}</b> <span class="fa">(güçlü $${r.up_stretch})</span> · 🔽 destek <b class="dn">$${r.dn_support}</b> <span class="fa">(ATR $${r.dn_atr})</span> · ATR ${r.atr_pct}%</div>
+  </div>`;
   const warn=inSession
     ? `<div class="ptstatus" style="background:rgba(255,180,84,.14);color:var(--amber)">⚠️ Seans AÇIK → gap ≈0 (anlamlı değil). Gap, seans-dışı (after-hours/pre-market) oluşur.</div>`
     : (sig.length? '' : `<div class="rec">Şu an belirgin gap yok (uzatılmış seans sakin).</div>`);
   box.innerHTML=`<div class="dtwrap" style="border-color:rgba(124,92,255,.22);background:linear-gradient(135deg,#141019,#1b1426)">
-    <div class="h">🌅 Açılış Gap · after-hours/pre-market <span class="badge st-mid">${sig.length} hareketli</span></div>
-    <div class="rec" style="color:var(--faint)">Seans: ABD ${esc(us)} · kapanış → uzatılmış-seans fiyatı = açılış sıçraması</div>
+    <div class="h">🌅 Açılış Kurulumu · gün-içi <span class="badge st-mid">${sig.length} hareketli</span></div>
+    <div class="rec" style="color:var(--amber)">Seans: ABD ${esc(us)} · kapanış → açılış (gap) + 🔼 yukarı hedef / 🔽 aşağı destek · 16:30 sonrası canlı haberle rafine</div>
     ${warn}
     ${top.length?'<div class="dth" style="color:var(--pos)">▲ Yukarı gap adayları</div>'+top.map(row).join(''):''}
     ${bot.length?'<div class="dth" style="color:var(--neg);margin-top:6px">▼ Aşağı gap</div>'+bot.map(row).join(''):''}
