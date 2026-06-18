@@ -22,6 +22,14 @@ def _dir_from_side(side: str) -> str:
     return "up" if side == "long" else "down" if side == "short" else "neutral"
 
 
+def _dir_from_signal(sig) -> str:
+    """MUTLAK tek-hisse yön (kıyaslamasız): sinyal işareti. Kullanıcı kararı (Stage 20):
+    göreceli yerine her hisseye absolute up/down. DÜRÜST UYARI: mutlak yön market-yönü
+    gürültüsünü ekler → göreceliden ZOR; ≈yazı-tura ölçüldü. Sahada acımasızca ölçülüyor."""
+    s = sig or 0.0
+    return "up" if s > 0.02 else "down" if s < -0.02 else "neutral"
+
+
 def log_snapshot(conn, ranking: list[dict], horizon_days: int = 1) -> int:
     """Bugün için her hisseye: yön + güven + USD fiyat logla (1/gün; idempotent)."""
     now = datetime.now(timezone.utc)
@@ -43,7 +51,7 @@ def log_snapshot(conn, ranking: list[dict], horizon_days: int = 1) -> int:
                 signal, confidence, conf_label, horizon_days)
                VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
             (f"{today}|{t}", made, target, t, it.get("market"), closes[-1],
-             _dir_from_side(it.get("side", "neutral")), it.get("signal"),
+             _dir_from_signal(it.get("signal")), it.get("signal"),
              it.get("confidence"), it.get("conf_label"), horizon_days))
         n += 1
     conn.commit()
