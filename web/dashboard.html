@@ -203,7 +203,7 @@ async function load(){
     FC={meta:fc,items:{}}; if(fc&&fc.items) fc.items.forEach(i=>FC.items[i.ticker]=i);
     const t=st.last?new Date(st.last*1000).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"}):null;
     $("mU").textContent = st.running?"toplanıyor…":(t?("son: "+t):"ilk toplama sürüyor…");
-    renderNewsbanner(nf, st.sessions); renderCsx(cs); renderPredtable(pt, st.sessions); renderGap(gp); renderDailycheck(dc); renderDaytrade(dt); renderFcsum(); render();
+    renderNewsbanner(nf, st.sessions); renderCsx(cs); renderPredtable(pt, st.sessions); renderGap(gp); renderDailycheck(dc); renderDaytrade(dt, st.sessions); renderFcsum(); render();
   }catch(e){
     $("list").innerHTML='<div class="state"><h3>Sunucuya ulaşılamadı</h3><p>server.py çalışıyor mu? Terminali kontrol et.</p></div>';
   }finally{$("ri").className="";}
@@ -279,10 +279,16 @@ function renderCsx(cs){
   </div>`;
 }
 
-function renderDaytrade(dt){
+function renderDaytrade(dt, sessions){
   const box=$("daytrade");
   if(!dt||!dt.tiers){box.innerHTML="";return;}
   const T=dt.tiers, q=dt.qualified||0, sc=dt.scanned||0;
+  // Gün-içi sistem SADECE ABD seansı açıkken canlı. Kapalıyken son-seans verisi → uykuda.
+  const us=(sessions&&sessions.us)||'';
+  const usOpen=us.indexOf('düzenli seans')>=0;
+  const dormant = !usOpen
+    ? `<div class="ptstatus" style="background:rgba(135,141,158,.14);color:var(--muted)">🌙 ABD seansı KAPALI (${esc(us)}) — gün-içi sistem <b>uykuda</b>. RVOL/kurulumlar SON seansın verisi; canlı değil. Seans açılınca (16:30 TR) gerçek zamanlı dolar.</div>`
+    : '';
   const meta={1:{e:'🥇',n:'SÜPER ELİT',c:'tg1',r:'R:R ≥ 3.0'},2:{e:'🥈',n:'ELİT',c:'tg2',r:'2.0–2.9'},
               3:{e:'🥉',n:'STANDART',c:'tg3',r:'1.5–1.9'},4:{e:'🎗️',n:'TAKİP',c:'tg4',r:'1.0–1.4'}};
   const sideC=s=>s==='up'?'var(--pos)':'var(--neg)', sideT=s=>s==='up'?'▲ LONG':'▼ SHORT';
@@ -308,8 +314,9 @@ function renderDaytrade(dt){
   }
   box.innerHTML=`<div class="dtwrap">
     <div class="h">⚡ Gün-içi Risk/Ödül · RVOL & Tier <span class="badge st-mid">${q}/${sc} nitelikli</span></div>
-    <div class="rec">15dk seviye + 1s trend teyidi · RVOL≥1.5 filtresi · R:R=(Hedef−Giriş)/(Giriş−Stop)</div>
-    ${grpHtml}${empty}
+    <div class="rec" style="color:var(--amber)">⏱️ <b>GÜN-İÇİ</b> sistem: 15dk seviye + 1s trend · <b>SEANS İÇİ</b> (gece/after-hours DEĞİL) · RVOL≥1.5 filtresi · R:R=(Hedef−Giriş)/(Giriş−Stop)</div>
+    ${dormant}
+    ${grpHtml}${usOpen?empty:''}
     <div class="rec" style="margin-top:8px;color:var(--faint)">⚠️ ${esc(dt.disclaimer||'')}</div>
   </div>`;
 }
