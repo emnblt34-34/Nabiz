@@ -20,4 +20,5 @@ jobs:
           TG_TOKEN: ${{ secrets.TG_TOKEN }}
           TG_CHAT: ${{ secrets.TG_CHAT }}
           WINDOW_MIN: "35"
+          TEST_PING: ${{ github.event_name == 'workflow_dispatch' }}
         run: python cloud/nabiz_cloud_watch.py

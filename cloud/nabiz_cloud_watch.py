@@ -120,7 +120,9 @@ def main():
                 print("feed hata:", f, e)
     for tag, t in hits[:8]:
         send("\U0001F4F0 NABIZ %s: %s" % (tag, t))
-    print("Gonderilen:", min(len(hits), 8), "| pencere(dk):", WINDOW_MIN, "|", now.isoformat())
+    if os.environ.get("TEST_PING", "").lower() == "true":
+        send("✅ Nabiz BULUT nobeti BAGLANDI. Katalizor cikinca buraya alarm dusecek (kripto + hisse). Bu bir test mesajidir.")
+    print("Gonderilen:", min(len(hits), 8), "| test:", os.environ.get("TEST_PING", ""), "| pencere(dk):", WINDOW_MIN, "|", now.isoformat())
 
 
 if __name__ == "__main__":
