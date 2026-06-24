@@ -14,9 +14,12 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from datetime import datetime, timezone
+
 from finsent import features
 from finsent.evaluation import stats, backtest, validation
 from finsent.portfolio import weights
+from finsent.signals import levels
 
 
 def _rand_series(n=400, seed=42, start=100.0):
@@ -132,6 +135,81 @@ def test_stats_functions():
     assert p is not None and 0.0 <= p <= 1.0
     dsr = stats.deflated_sharpe(rets, n_trials=7)
     assert dsr["dsr"] is None or 0.0 <= dsr["dsr"] <= 1.0
+
+
+# ---------------------------------------------------------------------------
+# 5) SEVİYE MOTORU (Stage 21) — uydurma YOK; SADECE veriden ölçülür
+#    (MRVL'de "$321 ATH" hatasının bir daha olmamasının garantisi)
+# ---------------------------------------------------------------------------
+def _synth_daily(n=300, seed=7):
+    rng = random.Random(seed)
+    dc = [100.0]
+    for _ in range(n - 1):
+        dc.append(max(1.0, dc[-1] * (1 + rng.gauss(0.0008, 0.02))))
+    dh = [c * (1 + abs(rng.gauss(0, 0.01))) for c in dc]
+    dl = [c * (1 - abs(rng.gauss(0, 0.01))) for c in dc]
+    do = [c * (1 + rng.gauss(0, 0.005)) for c in dc]
+    dts = [f"2025-{1 + (i // 28) % 12:02d}-{1 + (i % 28):02d}" for i in range(n)]
+    return dh, dl, dc, do, dts
+
+
+def test_levels_core_invariants():
+    """Çekirdek SADECE veriden üretir: ATH=max(high), ATL=min(low), her direnç fiyatın
+    ÜSTÜNDE, her destek ALTINDA, sıralı, ve deterministik (aynı girdi → aynı çıktı)."""
+    dh, dl, dc, do, dts = _synth_daily()
+    price = dc[-1]
+    now = datetime(2026, 6, 18, 13, 0, tzinfo=timezone.utc)  # dts'te yok → today_bar None
+    d = levels._levels_core("TEST", "TEST", "US", price, dh, dl, dc, do, dts, now)
+    assert d["ath"]["price"] == levels._r(max(dh)), "ATH != max(high) (uydurma!)"
+    assert d["atl"]["price"] == levels._r(min(dl)), "ATL != min(low)"
+    assert d["high_52w"] == levels._r(max(dh[-252:])), "52h-yüksek yanlış"
+    for r in d["resistances"]:
+        assert r["price"] > price, f"direnç fiyatın üstünde değil: {r['price']} <= {price}"
+    for s in d["supports"]:
+        assert s["price"] < price, f"destek fiyatın altında değil: {s['price']} >= {price}"
+    rp = [r["price"] for r in d["resistances"]]
+    sp = [s["price"] for s in d["supports"]]
+    assert rp == sorted(rp), "dirençler yakından uzağa sıralı değil"
+    assert sp == sorted(sp, reverse=True), "destekler yakından uzağa sıralı değil"
+    d2 = levels._levels_core("TEST", "TEST", "US", price, dh, dl, dc, do, dts, now)
+    assert d == d2, "seviye çekirdeği deterministik değil"
+
+
+def test_levels_ath_when_price_at_top():
+    """Fiyat = tüm-zaman tepe → konum ZİRVE/BLUE-SKY; ATH tam o fiyat, below_pct≈0."""
+    dh, dl, dc, do, dts = _synth_daily()
+    top = max(dh)
+    now = datetime(2026, 6, 18, 13, 0, tzinfo=timezone.utc)
+    d = levels._levels_core("TEST", "TEST", "US", top, dh, dl, dc, do, dts, now)
+    assert d["ath"]["price"] == levels._r(top)
+    assert "ZİRVE" in d["position"] or "BLUE-SKY" in d["position"], d["position"]
+    assert abs(d["ath"]["below_pct"]) < 0.2, "tepe fiyatta below_pct ~0 olmalı"
+
+
+def test_levels_helpers():
+    """Pivot tespiti / yuvarlak-seviye / ATR saf yardımcıları."""
+    highs = [1, 2, 3, 5, 3, 2, 1, 2, 4, 9, 4, 2, 1]
+    lows = [9, 8, 7, 5, 7, 8, 9, 8, 6, 1, 6, 8, 9]
+    ph, pl = levels._pivots(highs, lows, k=2)
+    assert 9 in ph and 5 in ph and 1 in pl, "swing tepe/dip tespiti yanlış"
+    rl = levels._round_levels(323.0)
+    assert 320.0 in rl and 330.0 in rl and all(abs(x % 10) < 1e-9 for x in rl)
+    rl627 = levels._round_levels(6.27)
+    assert 6.5 in rl627 and 6.0 in rl627, "küçük fiyat yuvarlak adımı yanlış"
+    h = [10, 11, 12, 11, 12, 13, 12, 13, 14, 13, 14, 15, 14, 15, 16]
+    l = [9, 10, 11, 10, 11, 12, 11, 12, 13, 12, 13, 14, 13, 14, 15]
+    c = [9.5, 10.5, 11.5, 10.5, 11.5, 12.5, 11.5, 12.5, 13.5, 12.5, 13.5, 14.5, 13.5, 14.5, 15.5]
+    assert levels._atr(h, l, c, 14) > 0, "ATR pozitif değil"
+
+
+def test_crypto_feed_id_mapping():
+    """CoinGecko sembol→id eşlemesi (Stage 22): HYPE gibi yfinance'te olmayan coinler için."""
+    from finsent.signals import crypto_feed
+    assert crypto_feed._id("HYPE") == "hyperliquid", "HYPE eşlemesi yanlış"
+    assert crypto_feed._id("BTC") == "bitcoin"
+    assert crypto_feed._id("avax") == "avalanche-2"
+    assert crypto_feed._id("near") == "near"
+    assert crypto_feed._id("dogecoin") == "dogecoin"  # bilinmeyen → küçük-harf passthrough
 
 
 # ---------------------------------------------------------------------------

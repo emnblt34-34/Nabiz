@@ -586,3 +586,78 @@ için YORUM = duygu yönü × model görüşü hizalaması: olumlu haber + model
 (teyit); olumlu haber ama model "zayıf" → ÇELİŞKİ (dikkat). **Dürüst:** haber-etki kanalı ZAYIF
 (Stage 7) — kesin sebep değil, hizalama/dikkat okuması. Sahte nedensellik üretilmez.
 
+
+## Stage 20 — Günlük yön = MUTLAK tek-hisse (2026-06-17)
+
+Kullanıcı kararı: günlük yön çağrısı artık göreli (kesitsel) değil, **her hisse için MUTLAK
+up/down** (sinyal işareti; `daily_check._dir_from_signal`: sig>0.02→up, <−0.02→down). DÜRÜST
+UYARI koda yazıldı: mutlak yön, market-yönü gürültüsünü ekler → göreceliden ZOR, ≈yazı-tura
+ölçüldü. Sahada `daily_check` ile acımasızca ölçülür (geçmişe uydurma yok).
+
+
+## Stage 21 — Doğrulanmış Teknik Seviye Motoru (2026-06-18)
+
+**NEDEN (kritik):** Canlı trade'de MRVL için "$321 ATH" dedim; **gerçek ATH $326.21**'di (kullanıcı
+yakaladı, ben göz-kararı yanıldım → erken "sat" sinyali, ~$6 hareket kaçtı). Trade'de seviye
+tahmininde tolerans YOK → sistemik çözüm gerekti.
+
+**Çözüm — `finsent/signals/levels.py`:** Her varlık için, **TÜM-geçmiş gerçek OHLC'den
+DETERMİNİSTİK** seviye haritası (yfinance, auto_adjust=False = trader-nominal):
+- **ATH/ATL** (period=max) + tarih + fiyatın ATH'a göre %'si  ·  **52-hafta** yüksek/düşük
+- **Swing destek/direnç:** pivot tespiti (yerel ekstrem k=4) + DAR kümeleme (~%0.6 → ATH'ı komşu
+  swing'e karıştırmaz) + dokunuş sayısı = güç
+- **SMA 20/50/200** (dinamik D/R)  ·  **ATR(14)** + ATR%
+- **Önceki gün H/L/C, bugün O/H/L, gün-içi ext (pre/post) H/L, VWAP**
+- **En yakın direnç (üstte) + destek (altta)** — tüm kaynaklar birleşik, sıralı, >%25 uzak elenir
+- **Konum sınıfı:** ZİRVE/blue-sky · ATH'a çok yakın · ortalamaların üstünde/altında · arası
+
+**Mimari (test edilebilirlik):** `compute_levels` veriyi çeker → saf `_levels_core` çekirdeğini
+çağırır (ağ yok). `tests/test_integrity.py`'a 3 test: **ATH==max(high), her direnç fiyatın ÜSTÜNDE /
+her destek ALTINDA, sıralı, deterministik** + pivot/yuvarlak/ATR → **12/12 geçti.** Değişmez
+garanti altında: bir daha "göz-kararı ATH" hatası mümkün değil.
+
+**Canlı kullanım:** `python -m finsent.signals.levels MRVL INTC MU AVAX-USD BTC-USD` (CLI, okunur
+format) + `/api/levels?symbols=...` endpoint. Doğrulandı: MRVL ATH **$326.21** (2026-06-18), INTC
+$135.48, MU $1133.24, AVAX ATH $146 (2021)→−95.7%, BTC ATH $126K (Eki 2025)→−50%.
+
+
+## Stage 22 — CoinGecko kripto veri katmanı + birleşik board (2026-06-19)
+
+**NEDEN:** yfinance bazı coinleri (özellikle **HYPE/Hyperliquid** — en güçlü altcoin kurulumu)
+VERMİYOR; canlı trade'de "veri yok" sınırına çarptık. Çözüm: **CoinGecko keyless public API**
+(17.000+ coin, HYPE dahil, ÜCRETSİZ, key gerektirmez, ~10k çağrı/ay demo).
+
+**Eklenenler:**
+- `finsent/signals/crypto_feed.py`: `live(symbols)` (anlık fiyat+24s değişim+hacim), `cg_ohlc()`
+  (OHLC mumları), `cg_levels(symbol)` → CoinGecko OHLC'yi **levels._levels_core**'a verir =
+  HYPE gibi yfinance'siz coinler de TAM seviye haritası alır (ATH **$76.70** doğrulandı). days=30
+  (4s mum) ile gerçek son-ATH yakalanır; granülerlik CG'ye bağlı (çıktıda kaynak belirtilir).
+- `finsent/signals/watchlist.py`: **birleşik board** — kripto (CoinGecko, HYPE dahil) + hisse +
+  forex (yfinance) tek tabloda. `python -m finsent.signals.watchlist`. Hisse tazeliği için
+  period='1mo' (5d quirk'i son günü atlıyordu) + seans-içi 1m.
+- Test: `test_crypto_feed_id_mapping` (sembol→id eşleme) → **13/13 geçti.**
+
+**Sonuç:** Veri katmanı tam — kripto (HYPE) CoinGecko, hisse/forex yfinance. "HYPE bak" artık
+tam analiz verir; "durum" tüm board'u çeker. Anthropic'in finans-agent haberi incelendi: 10 agent
+kurumsal (bizim işimiz değil), tek somut fayda = gerçek-zamanlı veri → CoinGecko ile karşılandı.
+
+
+## Stage 23 — Piyasa-zekası katmanı: insider + duygu + olay (2026-06-19)
+
+**NEDEN:** Kullanıcı "smart money" takibini (Capitol Trades/kongre) sordu. DÜRÜST bulgu: kongre =
+**45 GÜN gecikme** → day-trade edge'i YOK. AMA daha hızlı/ücretsiz cousin'ler var → onları bağladık.
+
+**`finsent/signals/intel.py` (hepsi ÜCRETSİZ/keyless):**
+- **`insider_form4(ticker)`** — SEC EDGAR Form 4 (içeriden alım/satım, **~2 İŞ GÜNÜ** gecikme = gerçek
+  sinyal). ticker→CIK (company_tickers.json) → submissions → HAM Form-4 XML parse (P=açık-piyasa
+  alım; basename kullan, xslF345X06/ XSLT-HTML değil). Net ALIM/SATIM + $ döner.
+- **`crypto_fng()` / `stock_fng()`** — Korku&Açgözlülük (alternative.me / CNN dataviz, tarayıcı UA).
+- **`vix()`** — VIX + sınıf (sakin/normal/tedirgin/korku/panik).
+- **`earnings_date(ticker)`** — sonraki bilanço (binary olay uyarısı).
+- **`summary(tickers)`** + CLI: `python -m finsent.signals.intel MRVL INTC MU ...`
+
+**İLK ÇIKTI (19 Haz) — anında değer:** Watchlist'te **içeriden GENEL SATIM** (güce satıyorlar):
+MU **−$40M** (24 Haz bilanço öncesi!), ARM −$9.2M, FLEX −$6.85M, MRVL −$3.67M (CEO Murphy → short
+tezini **bağımsız teyit**), INTC −$4.5M. TEK istisna: **HOOD +$12.76M içeriden ALIM** (boğa aykırı).
+Duygu: kripto F&G 14 (aşırı korku), hisse F&G 37 (korku), VIX 16.78. **13/13 test korundu.**
+

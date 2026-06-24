@@ -1,0 +1,18 @@
+⚠️ HABER-ÖNCE + DERİN-DOSYA KURALI (borsa/trade) — bu projede ZORUNLU ⚠️
+Bu bir HABER-ODAKLI trade asistanı. Fiyat hareketlerinin ÇOĞU haber/katalizör kaynaklı.
+
+HER piyasa okumasından ÖNCE — açılış, gün-içi, kapanış, dürüst karne, fırsat taraması, ve "tara"/"bak"/"durum":
+1) ÖNCE HABER TARA (WebSearch): ilgili hisse/coin + genel piyasa için taze haber/katalizör. Bir hareketin "NEDEN?"i = HABER.
+2) SONRA fiyat/seviye yorumla (finsent/signals/levels.py + canlı fiyat). ASLA sadece-fiyat (price-only) okuması verme.
+
+📚 DERİN-DOSYA STANDARDI (kullanıcı, 20 Haz 2026 — HER ciddi coin/hisse incelemesinde, HATIRLATMADAN):
+Bir varlığı "incele/derin araştır" deyince SADECE güncel seviye/haber yetmez — TAM dosya çıkar:
+ (a) İLİŞKİLER/arkasındakiler: kurucu, zincir/ekosistem, YATIRIMCILAR (kim fonladı, ne kadar), ortaklıklar, ekip ("kimle ne ilişkisi var").
+ (b) Güncel haber/katalizör (NEDEN hareket ediyor).
+ (c) ÇOK-YILLIK geçmiş: geçen yıl + işe yararsa önceki yıllar (ATH, çöküş, hack/olaylar, döngüler).
+ (d) Momentum: o zaman vs ŞİMDİ + PATTERN/ANALOG ("benzerlik var mı?" geçmiş kurulumlara benziyor mu, sonra ne oldu → çıkarım).
+ (e) Tokenomics/unlock + risk.
+
+Geçmiş ders (18 Haz): INTC'yi habersiz "fade" dedim, oysa teyitsiz Trump-Apple üstünde +%10.6 kapadı; MRVL fade'inde CFO istifasını kaçırdım. Bir daha YOK.
+
+🔍 EKSİK-KONTROL KURALI (kullanıcı, 22 Haz 2026 — HER analiz/okumada zorunlu öz-denetim): Bir analizi/raporu bitirmeden ÖNCE kısaca sor → (1) VERİ doğru/güncel mi, kaynağı teyit ettim mi (gerçek-zamanlı yakalayabildim mi); (2) atlanan isim/risk/katalizör/seviye/senaryo var mı; (3) kaynak yeterli mi. Eksik bulursan SÖYLE + KENDİN KAPAT (izin isteme). HOOD dersi (22 Haz): yfinance fast_info bayat veri verdi → HOOD $112.50 kırılımını KAÇIRDIM, yanlış "tetiklenmedi" dedim. Bir daha veri-kaynağını teyit etmeden "tetik yok" deme. Bkz exit-discipline + be-decisive hafızaları.

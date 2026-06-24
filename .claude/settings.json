@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cat .claude/news-first-reminder.txt 2>/dev/null || true",
+            "timeout": 5,
+            "statusMessage": "Haber-once kurali hatirlatiliyor"
+          }
+        ]
+      }
+    ]
+  }
+}

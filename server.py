@@ -24,7 +24,7 @@ from fastapi.responses import HTMLResponse
 
 from finsent import db, prices, forecast, fx
 from finsent.portfolio import cross_section, daily_check
-from finsent.signals import daytrade
+from finsent.signals import daytrade, levels
 from finsent.evaluation import validation, benchmarks
 from finsent.pipeline import run_once
 from finsent.config import (TICKERS, TICKER_MARKET, HORIZON_BARS,
@@ -685,6 +685,23 @@ def daytrade_api():
                          "kazanma olasılığı DEĞİL; tanımlı-riskli kurulumların hacim+geometri "
                          "sıralaması. Seviyeler ATR+swing (teknik); karar kullanıcının. Tavsiye değildir.")
     return res
+
+
+@app.get("/api/levels")
+def levels_api(symbols: str = ""):
+    """Doğrulanmış teknik seviye haritası (Stage 21): ATH/ATL/52h, swing destek/direnç
+    (pivot+kümele), SMA20/50/200, ATR, VWAP, en yakın D/R + konum sınıfı. SADECE gerçek
+    tüm-geçmiş OHLC'den DETERMİNİSTİK ölçülür — uydurma YOK (MRVL '$321 ATH' hatasının çözümü).
+    ?symbols=MRVL,INTC,MU (boşsa varsayılan odak 3 hisse)."""
+    yf = levels._yf()
+    if yf is None:
+        return {"error": "yfinance yok", "levels": []}
+    syms = [s.strip().upper() for s in symbols.split(",") if s.strip()] or ["MRVL", "INTC", "MU"]
+    return {
+        "levels": [levels.compute_levels(s, yf) for s in syms[:8]],
+        "note": ("Seviyeler tüm-geçmiş OHLC'den ölçülür (auto_adjust=False = trader-nominal). "
+                 "ATH=max(high); her direnç fiyatın üstünde, her destek altında (test garantili)."),
+    }
 
 
 @app.get("/api/ablation")
